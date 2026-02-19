@@ -2,8 +2,10 @@
 """Verify SQLite database contents"""
 
 import sqlite3
+from pathlib import Path
 
-conn = sqlite3.connect("market_analyzer.db")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+conn = sqlite3.connect(str(ROOT_DIR / "data" / "market_analyzer.db"))
 cursor = conn.cursor()
 
 print("\n📊 Database Verification\n")

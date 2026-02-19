@@ -4,4 +4,4 @@ echo "-----------------------------------------"
 echo "Starting Recommendation Server"
 echo "-----------------------------------------"
 
-poetry run uvicorn market_analyzer.recommendation_api:app --reload --host 0.0.0.0 --port 8000
+poetry run uvicorn market_analyzer.server:app --reload --host 0.0.0.0 --port 8000

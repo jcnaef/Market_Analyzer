@@ -3,8 +3,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 # Import both models
-from .ai_skill_recommendation import SkillRecommender
-from .ai_location_skill_recommendation import LocationSkillRecommender
+from .skill_recommender import SkillRecommender
+from .location_recommender import LocationSkillRecommender
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # Initialize
-db_file = ROOT_DIR / "market_analyzer.db"
+db_file = ROOT_DIR / "data" / "market_analyzer.db"
 if db_file.exists():
     skill_brain = SkillRecommender(str(db_file))
     location_brain = LocationSkillRecommender(str(db_file))

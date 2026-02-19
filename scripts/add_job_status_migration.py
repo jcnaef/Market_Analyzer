@@ -7,8 +7,12 @@ Safe to run multiple times - checks if columns exist before adding.
 import sqlite3
 from pathlib import Path
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
 
-def add_job_status_columns(db_path: str = "market_analyzer.db"):
+
+def add_job_status_columns(db_path: str = None):
+    if db_path is None:
+        db_path = str(ROOT_DIR / "data" / "market_analyzer.db")
     """Add status and last_seen_at columns to jobs table if they don't exist."""
     try:
         conn = sqlite3.connect(db_path)
@@ -52,7 +56,7 @@ def add_job_status_columns(db_path: str = "market_analyzer.db"):
 
 
 if __name__ == "__main__":
-    db_path = Path("market_analyzer.db")
+    db_path = ROOT_DIR / "data" / "market_analyzer.db"
     if not db_path.exists():
         print(f"✗ Error: {db_path} not found")
         exit(1)

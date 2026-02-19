@@ -1,12 +1,12 @@
 import pandas as pd
 from pathlib import Path
-from .ai_location_skill_recommendation import LocationSkillRecommender
+from .location_recommender import LocationSkillRecommender
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 # 1. Check the raw CSV data
 print("--- CSV DIAGNOSTIC ---")
-df = pd.read_csv(ROOT_DIR / "processed_jobs.csv")
+df = pd.read_csv(ROOT_DIR / "data" / "processed_jobs.csv")
 
 if 'job_city' not in df.columns:
     print("❌ ERROR: 'job_cities' column is MISSING from your CSV.")
@@ -23,7 +23,7 @@ else:
 # 2. Check the Brain
 print("\n--- BRAIN DIAGNOSTIC ---")
 try:
-    brain = LocationSkillRecommender(str(ROOT_DIR / "processed_jobs.csv"))
+    brain = LocationSkillRecommender(str(ROOT_DIR / "data" / "processed_jobs.csv"))
     print(f"Total Locations in Matrix: {len(brain.location_matrix.index)}")
     print("Available Locations:")
     print(sorted(brain.location_matrix.index.tolist()))

@@ -117,7 +117,7 @@ def collect_all_states(category="Software Engineering", page_limit=3):
     return all_jobs
 
 def save_to_file(data, filename="muse_jobs.json"):
-    filepath = ROOT_DIR / filename
+    filepath = ROOT_DIR / "data" / filename
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
         print(f"Successfully saved {len(data)} jobs to {filepath}")
