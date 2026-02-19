@@ -70,7 +70,8 @@ cursor.execute("""
         COUNT(DISTINCT j.id) as job_count,
         COUNT(DISTINCT j.company_id) as company_count
     FROM jobs j
-    JOIN locations l ON j.location_id = l.id
+    JOIN job_locations jl ON j.id = jl.job_id
+    JOIN locations l ON jl.location_id = l.id
     GROUP BY l.id
     ORDER BY job_count DESC
 """)

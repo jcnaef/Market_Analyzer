@@ -1,3 +1,4 @@
+import sqlite3
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -60,3 +61,51 @@ def get_city_stats(city: str):
     if not results:
         raise HTTPException(status_code=404, detail="Location not found")
     return results
+
+@app.get("/skills/autocomplete")
+def skills_autocomplete(q: str = "", limit: int = 8):
+    """
+    Autocomplete endpoint for skills.
+    Query param 'q' is the search prefix (required, non-empty).
+    Returns matching skill names ordered alphabetically.
+    """
+    if not q:
+        raise HTTPException(status_code=400, detail="Query parameter 'q' is required")
+
+    if not skill_brain:
+        raise HTTPException(status_code=500, detail="Skill database not available")
+
+    prefix = q.lower() + "%"
+    try:
+        conn = sqlite3.connect(skill_brain.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT name FROM skills WHERE LOWER(name) LIKE LOWER(?) ORDER BY name ASC LIMIT ?",
+            (prefix, limit)
+        )
+        results = cursor.fetchall()
+        conn.close()
+        suggestions = [row[0] for row in results]
+        return {"suggestions": suggestions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.get("/locations/autocomplete")
+def locations_autocomplete(q: str = "", limit: int = 8):
+    """
+    Autocomplete endpoint for locations.
+    Filters location_brain.known_locations in memory.
+    Returns matching location names ordered alphabetically.
+    """
+    if not q:
+        raise HTTPException(status_code=400, detail="Query parameter 'q' is required")
+
+    if not location_brain:
+        raise HTTPException(status_code=500, detail="Location database not available")
+
+    try:
+        matches = [loc for loc in location_brain.known_locations if loc.lower().startswith(q.lower())]
+        suggestions = sorted(matches)[:limit]
+        return {"suggestions": suggestions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error filtering locations: {str(e)}")

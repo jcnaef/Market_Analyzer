@@ -2,18 +2,8 @@ import requests
 import json
 import time
 from pathlib import Path
-# TODO Implement JSEARCH for more data
 
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
-
-#from dotenv import load_dotenv
-
-#load_dotenv()
-#api_key = os.getenv("JSEARCH_KEY")
-
-#JSEARCH_URL = "https://jsearch.p.rapidapi.com/job-details"
-
-#def get_jsearch_jobs(
 
 MUSE_URL = "https://www.themuse.com/api/public/jobs"
 def get_muse_jobs(category="Software Engineering", location = "New York, NY", page_limit=3):

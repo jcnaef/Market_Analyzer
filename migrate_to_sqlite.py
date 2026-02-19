@@ -144,13 +144,15 @@ class DatabaseMigrator:
 
     def get_or_create_location(self, job_city: List[str], is_remote: bool) -> int:
         """Get or create location and return ID"""
-        # Parse location from job_city (stored as list in CSV)
+        # Parse location from job_city (stored as list of dicts in CSV)
         city = "Remote" if is_remote else "Unknown"
         state = None
 
         if job_city and isinstance(job_city, list) and len(job_city) > 0:
-            location_str = job_city[0]  # "New York, NY"
-            if "," in location_str:
+            location_item = job_city[0]
+            # Handle both dict format {'name': 'New York, NY'} and string format
+            location_str = location_item.get('name') if isinstance(location_item, dict) else location_item
+            if location_str and "," in location_str:
                 parts = location_str.split(",")
                 city = parts[0].strip()
                 state = parts[1].strip() if len(parts) > 1 else None
@@ -211,7 +213,8 @@ class DatabaseMigrator:
 
             # Check if job already exists
             self.cursor.execute("SELECT id FROM jobs WHERE muse_job_id = ?", (muse_job_id,))
-            if self.cursor.fetchone():
+            existing_job = self.cursor.fetchone()
+            if existing_job:
                 return True  # Skip duplicates
 
             # Get or create company
@@ -219,28 +222,18 @@ class DatabaseMigrator:
             if not company_id:
                 return False
 
-            # Get or create location
-            is_remote = row.get("is_remote", "").lower() == "true" or row.get("is_remote") == True
-            job_city_str = row.get("locations", "[]")
-            try:
-                job_city = json.loads(job_city_str.replace("'", '"'))
-            except:
-                job_city = []
-
-            location_id = self.get_or_create_location(job_city, is_remote)
-
             # Parse salary
             salary_min, salary_max = self.parse_salary(row.get("salary", ""))
 
             # Parse publication date
             pub_date = row.get("publication_date", "")
 
-            # Insert job
+            # Insert job (without location_id)
             self.cursor.execute(
                 """INSERT INTO jobs (
                     muse_job_id, title, company_id, description, clean_description,
-                    salary_min, salary_max, location_id, is_remote, publication_date, job_url
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    salary_min, salary_max, is_remote, publication_date, job_url
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     muse_job_id,
                     row.get("name", ""),
@@ -249,14 +242,34 @@ class DatabaseMigrator:
                     row.get("clean_description", ""),
                     salary_min,
                     salary_max,
-                    location_id,
-                    1 if is_remote else 0,
+                    1 if (row.get("is_remote", "").lower() == "true" or row.get("is_remote") == True) else 0,
                     pub_date if pub_date else None,
                     row.get("refs.landing_page", "")
                 )
             )
             job_id = self.cursor.lastrowid
             self.stats["jobs_imported"] += 1
+
+            # Get or create ALL locations and link them to the job
+            is_remote = row.get("is_remote", "").lower() == "true" or row.get("is_remote") == True
+            job_city_str = row.get("locations", "[]")
+            try:
+                job_cities = json.loads(job_city_str.replace("'", '"'))
+            except:
+                job_cities = []
+
+            # If no explicit locations but job is remote, create remote location
+            if not job_cities and is_remote:
+                job_cities = [{"name": "Remote"}]
+
+            # Process all locations for this job
+            for job_city in job_cities:
+                location_id = self.get_or_create_location([job_city], is_remote)
+                if location_id:
+                    self.cursor.execute(
+                        "INSERT OR IGNORE INTO job_locations (job_id, location_id) VALUES (?, ?)",
+                        (job_id, location_id)
+                    )
 
             # Parse and insert skills
             skills_data = self.parse_skills_json(row.get("skills_data", "{}"))

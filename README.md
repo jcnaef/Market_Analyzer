@@ -16,13 +16,16 @@ It features an automated data pipeline that fetches real job descriptions, an NL
 
 ### Data Pipeline & NLP
 * `api_handler.py`: Pings The Muse API and downloads raw job listings into `muse_jobs.json`.
-* `ai_data_cleaner.py` / `data_cleaner.py`: Parses the JSON, strips HTML, extracts salaries/locations, and matches text against a skill taxonomy. Outputs a clean `processed_jobs.csv`.
+* `ai_data_cleaner.py`: Parses the JSON, strips HTML, extracts salaries/locations, and matches text against a skill taxonomy. Outputs a clean `processed_jobs.csv`.
 * `nlp.py`: An experimental advanced extraction module utilizing `spaCy` (`en_core_web_lg`) and `SkillExtractor` for deep semantic parsing.
-* `debug.py`: A diagnostic utility to verify the integrity of the generated CSV and ensure the recommendation matrices load correctly.
+* `debug.py`: A diagnostic utility to verify data integrity.
 
-### Backend (FastAPI)
-* `ai_skill_recommendation.py`: Builds a statistical matrix from the processed CSV to calculate cross-skill probabilities.
-* `ai_location_skill_recommendation.py`: Builds a matrix mapping geographic locations (and "Remote" status) to the most requested technical skills.
+### Database & Backend (FastAPI)
+* `market_analyzer.db`: SQLite database containing jobs, skills, locations, and their relationships (created by migration scripts).
+* `migrate_to_sqlite.py`: Migration script that populates the SQLite database from processed CSV data.
+* `verify_database.py`: Utility to verify database integrity and schema.
+* `ai_skill_recommendation.py`: Queries the database to calculate skill co-occurrence probabilities and identify related skills.
+* `ai_location_skill_recommendation.py`: Queries the database to identify the most in-demand skills by location or remote status.
 * `recommendation_api.py`: The FastAPI application that exposes the recommendation engines via REST endpoints (`/skill/{name}` and `/location/{city}`).
 
 ### Frontend (React)
@@ -36,19 +39,26 @@ It features an automated data pipeline that fetches real job descriptions, an NL
 ## Installation & Setup
 
 ### 1. Build the Data Model
-First, fetch the raw data and run it through the cleaning pipeline to generate your recommendation matrices.
+First, fetch the raw data and run it through the cleaning pipeline to generate the CSV.
 ```bash
-python api_handler.py
-python ai_data_cleaner.py
+python src/market_analyzer/api_handler.py
+python src/market_analyzer/ai_data_cleaner.py
 ```
 
-### 2. Start the Backend API
-Launch the FASTAPI server. It will run on port 8000 and handle requests from the frontend
+### 2. Populate the Database
+Migrate the processed CSV data into the SQLite database.
+```bash
+python migrate_to_sqlite.py
+python verify_database.py
+```
+
+### 3. Start the Backend API
+Launch the FastAPI server. It will run on port 8000 and handle requests from the frontend.
 ```bash
 ./run.sh
 ```
 
-### 3. Start the React Frontend
+### 4. Start the React Frontend
 Open a new terminal window, navigate to your frontend directory, install the dependencies, and start the development server (typically runs on port 5173).
 ```bash
 ./start_frontend.sh

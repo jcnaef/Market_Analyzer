@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS skills (
 CREATE INDEX IF NOT EXISTS idx_skills_name ON skills(name);
 CREATE INDEX IF NOT EXISTS idx_skills_category ON skills(category_id);
 
--- Jobs table
+-- Jobs table (removed location_id - now uses job_locations junction table)
 CREATE TABLE IF NOT EXISTS jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     muse_job_id TEXT UNIQUE NOT NULL,
@@ -59,7 +59,6 @@ CREATE TABLE IF NOT EXISTS jobs (
     salary_min DECIMAL(10, 2),
     salary_max DECIMAL(10, 2),
     currency TEXT DEFAULT 'USD',
-    location_id INTEGER NOT NULL,
     is_remote BOOLEAN DEFAULT 0,
     job_level TEXT,
     publication_date TIMESTAMP,
@@ -67,15 +66,25 @@ CREATE TABLE IF NOT EXISTS jobs (
     fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (company_id) REFERENCES companies(id),
-    FOREIGN KEY (location_id) REFERENCES locations(id)
+    FOREIGN KEY (company_id) REFERENCES companies(id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_jobs_muse_id ON jobs(muse_job_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id);
-CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_publication_date ON jobs(publication_date);
 CREATE INDEX IF NOT EXISTS idx_jobs_remote ON jobs(is_remote);
+
+-- Job-Locations junction table (many-to-many relationship)
+CREATE TABLE IF NOT EXISTS job_locations (
+    job_id INTEGER NOT NULL,
+    location_id INTEGER NOT NULL,
+    PRIMARY KEY (job_id, location_id),
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+    FOREIGN KEY (location_id) REFERENCES locations(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_locations_location ON job_locations(location_id);
+CREATE INDEX IF NOT EXISTS idx_job_locations_job ON job_locations(job_id);
 
 -- Job-Skills junction table (many-to-many relationship)
 CREATE TABLE IF NOT EXISTS job_skills (

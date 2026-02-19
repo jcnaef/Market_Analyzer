@@ -11,18 +11,26 @@ class SkillRecommender:
         print(f"Skill engine ready. {count} skills in database.")
 
     def get_skill_recommendations(self, skill_name, limit=10):
+        """
+        Finds skills most frequently co-occurring with the target skill using conditional probability.
+
+        The SQL query:
+        1. Finds all jobs containing the target skill
+        2. Identifies other skills in those same jobs (co-occurrences)
+        3. Calculates conditional probability: P(skill2 | target_skill) =
+           count(jobs with both) / count(jobs with target)
+        4. Returns top skills by probability, sorted descending
+        """
         skill_lower = skill_name.lower()
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
-        # Check skill exists
         cursor.execute("SELECT id FROM skills WHERE LOWER(name) = ? LIMIT 1", (skill_lower,))
         if cursor.fetchone() is None:
             conn.close()
             return None
 
-        # Co-occurrence with conditional probability score
         cursor.execute("""
             SELECT s2.name,
                    CAST(COUNT(*) AS FLOAT) / (
