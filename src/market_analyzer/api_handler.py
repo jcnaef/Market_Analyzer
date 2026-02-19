@@ -1,7 +1,10 @@
 import requests
 import json
 import time
+from pathlib import Path
 # TODO Implement JSEARCH for more data
+
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 #from dotenv import load_dotenv
 
@@ -43,9 +46,10 @@ def get_muse_jobs(category="Software Engineering", location = "New York, NY", pa
     return all_jobs
 
 def save_to_file(data, filename="muse_jobs.json"):
-    with open(filename, "w") as f:
+    filepath = ROOT_DIR / filename
+    with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
-        print(f"Successfully saved {len(data)} jobs to {filename}")
+        print(f"Successfully saved {len(data)} jobs to {filepath}")
 
 if __name__ == "__main__":
     jobs = get_muse_jobs(category="Software Engineering", location = "New York, NY",page_limit=25)

@@ -5,9 +5,12 @@ import pandas as pd
 import re
 import unicodedata
 import os
+from pathlib import Path
 from bs4 import BeautifulSoup
 from nltk.tokenize import RegexpTokenizer
 from nltk.util import ngrams
+
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Ensure NLTK data is present
 try:
@@ -19,11 +22,12 @@ def load_skills(filename="skills.json"):
     """
     Loads skill taxonomy from a JSON file and converts lists to sets for faster O(1) lookups.
     """
-    if not os.path.exists(filename):
-        print(f"Warning: {filename} not found. Skill extraction will be skipped.")
+    filepath = ROOT_DIR / filename
+    if not os.path.exists(filepath):
+        print(f"Warning: {filepath} not found. Skill extraction will be skipped.")
         return {}
 
-    with open(filename, 'r') as file:
+    with open(filepath, 'r') as file:
         data = json.load(file)
         for category in data:
             data[category] = set(data[category])
@@ -33,21 +37,22 @@ def load_job_data(filename):
     """
     Loads job data from a JSON file and normalizes it into a DataFrame.
     """
-    if not os.path.exists(filename):
-        print(f"Error: Input file '{filename}' not found.")
+    filepath = ROOT_DIR / filename
+    if not os.path.exists(filepath):
+        print(f"Error: Input file '{filepath}' not found.")
         return pd.DataFrame()
 
     try:
-        with open(filename, 'r') as f:
+        with open(filepath, 'r') as f:
             data = json.load(f)
-        
+
         # Normalize nested JSON into a flat table
         df = pd.json_normalize(data)
-        print(f"Successfully loaded {len(df)} job listings from {filename}.")
+        print(f"Successfully loaded {len(df)} job listings from {filepath}.")
         return df
-        
+
     except json.JSONDecodeError:
-        print(f"Error: Failed to decode JSON from {filename}. Check file format.")
+        print(f"Error: Failed to decode JSON from {filepath}. Check file format.")
         return pd.DataFrame()
     except Exception as e:
         print(f"An unexpected error occurred loading data: {e}")
@@ -208,13 +213,14 @@ def process_dataset(data_file, skills_file="skills.json"):
 # --- Entry Point ---
 if __name__ == "__main__":
     input_file = 'muse_jobs.json'
-    
+
     final_df = process_dataset(input_file)
-    
+
     if not final_df.empty:
         print("\n--- Data Preview ---")
         # Adjust these column names based on what actually exists in your data
         cols_to_show = ['job_city', 'is_remote']
         existing_cols = [c for c in cols_to_show if c in final_df.columns]
         print(final_df[existing_cols].head())
-        final_df.to_csv("processed_jobs.csv", index=False)
+        output_path = ROOT_DIR / "processed_jobs.csv"
+        final_df.to_csv(output_path, index=False)

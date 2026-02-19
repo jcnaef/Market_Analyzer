@@ -1,9 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-# Import both models
-from ai_skill_recommendation import SkillRecommender
-from ai_location_skill_recommendation import LocationSkillRecommender
+from pathlib import Path
 import os
+# Import both models
+from .ai_skill_recommendation import SkillRecommender
+from .ai_location_skill_recommendation import LocationSkillRecommender
+
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 app = FastAPI()
 
@@ -16,10 +19,10 @@ app.add_middleware(
 )
 
 # Initialize
-csv_file = "processed_jobs.csv"
+csv_file = ROOT_DIR / "processed_jobs.csv"
 if os.path.exists(csv_file):
-    skill_brain = SkillRecommender(csv_file)
-    location_brain = LocationSkillRecommender(csv_file)
+    skill_brain = SkillRecommender(str(csv_file))
+    location_brain = LocationSkillRecommender(str(csv_file))
 else:
     skill_brain = None
     location_brain = None
