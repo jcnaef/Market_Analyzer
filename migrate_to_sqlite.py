@@ -18,6 +18,7 @@ class DatabaseMigrator:
         self.csv_path = csv_path
         self.conn = None
         self.cursor = None
+        self.run_timestamp = datetime.now().isoformat()
 
         # Cache for IDs to avoid duplicate lookups
         self.company_cache: Dict[str, int] = {}
@@ -28,10 +29,12 @@ class DatabaseMigrator:
         # Statistics
         self.stats = {
             "jobs_imported": 0,
+            "jobs_updated": 0,
             "companies_created": 0,
             "locations_created": 0,
             "skills_created": 0,
             "job_skills_created": 0,
+            "jobs_closed": 0,
             "errors": 0
         }
 
@@ -205,17 +208,11 @@ class DatabaseMigrator:
             return {}
 
     def import_job(self, row: Dict) -> bool:
-        """Import single job row and return success status"""
+        """Import single job row - UPSERT if exists, INSERT if new"""
         try:
             muse_job_id = str(row.get("id", ""))
             if not muse_job_id:
                 return False
-
-            # Check if job already exists
-            self.cursor.execute("SELECT id FROM jobs WHERE muse_job_id = ?", (muse_job_id,))
-            existing_job = self.cursor.fetchone()
-            if existing_job:
-                return True  # Skip duplicates
 
             # Get or create company
             company_id = self.get_or_create_company(row)
@@ -227,31 +224,65 @@ class DatabaseMigrator:
 
             # Parse publication date
             pub_date = row.get("publication_date", "")
+            is_remote = row.get("is_remote", "").lower() == "true" or row.get("is_remote") == True
 
-            # Insert job (without location_id)
-            self.cursor.execute(
-                """INSERT INTO jobs (
-                    muse_job_id, title, company_id, description, clean_description,
-                    salary_min, salary_max, is_remote, publication_date, job_url
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    muse_job_id,
-                    row.get("name", ""),
-                    company_id,
-                    row.get("contents", ""),
-                    row.get("clean_description", ""),
-                    salary_min,
-                    salary_max,
-                    1 if (row.get("is_remote", "").lower() == "true" or row.get("is_remote") == True) else 0,
-                    pub_date if pub_date else None,
-                    row.get("refs.landing_page", "")
+            # Check if job already exists
+            self.cursor.execute("SELECT id FROM jobs WHERE muse_job_id = ?", (muse_job_id,))
+            existing_job = self.cursor.fetchone()
+
+            if existing_job:
+                # UPSERT: Update existing job
+                job_id = existing_job[0]
+                self.cursor.execute(
+                    """UPDATE jobs SET
+                        title = ?, company_id = ?, description = ?, clean_description = ?,
+                        salary_min = ?, salary_max = ?, is_remote = ?, publication_date = ?,
+                        job_url = ?, fetched_at = ?, updated_at = ?, status = 'open', last_seen_at = ?
+                        WHERE muse_job_id = ?""",
+                    (
+                        row.get("name", ""),
+                        company_id,
+                        row.get("contents", ""),
+                        row.get("clean_description", ""),
+                        salary_min,
+                        salary_max,
+                        1 if is_remote else 0,
+                        pub_date if pub_date else None,
+                        row.get("refs.landing_page", ""),
+                        self.run_timestamp,
+                        self.run_timestamp,
+                        self.run_timestamp,
+                        muse_job_id
+                    )
                 )
-            )
-            job_id = self.cursor.lastrowid
-            self.stats["jobs_imported"] += 1
+                self.stats["jobs_updated"] += 1
+            else:
+                # INSERT: New job
+                self.cursor.execute(
+                    """INSERT INTO jobs (
+                        muse_job_id, title, company_id, description, clean_description,
+                        salary_min, salary_max, is_remote, publication_date, job_url,
+                        fetched_at, last_seen_at, status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')""",
+                    (
+                        muse_job_id,
+                        row.get("name", ""),
+                        company_id,
+                        row.get("contents", ""),
+                        row.get("clean_description", ""),
+                        salary_min,
+                        salary_max,
+                        1 if is_remote else 0,
+                        pub_date if pub_date else None,
+                        row.get("refs.landing_page", ""),
+                        self.run_timestamp,
+                        self.run_timestamp
+                    )
+                )
+                job_id = self.cursor.lastrowid
+                self.stats["jobs_imported"] += 1
 
             # Get or create ALL locations and link them to the job
-            is_remote = row.get("is_remote", "").lower() == "true" or row.get("is_remote") == True
             job_city_str = row.get("locations", "[]")
             try:
                 job_cities = json.loads(job_city_str.replace("'", '"'))
@@ -298,6 +329,21 @@ class DatabaseMigrator:
             self.stats["errors"] += 1
             return False
 
+    def mark_closed_jobs(self):
+        """Mark jobs as closed if they weren't seen in this run"""
+        try:
+            self.cursor.execute(
+                """UPDATE jobs SET status = 'closed', updated_at = ?
+                   WHERE status = 'open' AND (last_seen_at IS NULL OR last_seen_at < ?)""",
+                (self.run_timestamp, self.run_timestamp)
+            )
+            self.stats["jobs_closed"] = self.cursor.rowcount
+            self.conn.commit()
+            if self.stats["jobs_closed"] > 0:
+                print(f"✓ Marked {self.stats['jobs_closed']} jobs as closed")
+        except Exception as e:
+            print(f"✗ Error marking closed jobs: {e}")
+
     def migrate(self):
         """Run the full migration"""
         print("\n🚀 Starting migration from CSV to SQLite...\n")
@@ -320,6 +366,10 @@ class DatabaseMigrator:
                     self.conn.commit()
 
         self.conn.commit()
+
+        # Mark jobs not seen in this run as closed
+        self.mark_closed_jobs()
+
         self.conn.close()
 
         # Print statistics
@@ -327,6 +377,8 @@ class DatabaseMigrator:
         print("✓ Migration Complete!")
         print("="*50)
         print(f"Jobs imported:      {self.stats['jobs_imported']}")
+        print(f"Jobs updated:       {self.stats['jobs_updated']}")
+        print(f"Jobs closed:        {self.stats['jobs_closed']}")
         print(f"Companies created:  {self.stats['companies_created']}")
         print(f"Locations created:  {self.stats['locations_created']}")
         print(f"Job-Skill links:    {self.stats['job_skills_created']}")

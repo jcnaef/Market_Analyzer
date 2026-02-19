@@ -170,7 +170,7 @@ def process_dataset(data_file, skills_file="skills.json"):
     # 1. Load Data using our new functions
     taxonomy = load_skills(skills_file)
     df = load_job_data(data_file)
-    
+
     if df.empty:
         return df
 
@@ -204,8 +204,13 @@ def process_dataset(data_file, skills_file="skills.json"):
     # 6. Expand Skills into Columns
     skills_df = pd.json_normalize(df['skills_data'])
     skills_df.columns = [f"skills_{c}" for c in skills_df.columns]
-    
+
     df = pd.concat([df, skills_df], axis=1)
+
+    # 7. Save to CSV
+    output_path = ROOT_DIR / "processed_jobs.csv"
+    df.to_csv(output_path, index=False)
+    print(f"✓ Saved {len(df)} processed jobs to {output_path}")
 
     print("Processing complete.")
     return df

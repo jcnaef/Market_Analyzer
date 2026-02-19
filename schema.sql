@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     publication_date TIMESTAMP,
     job_url TEXT,
     fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP,
+    status TEXT DEFAULT 'open',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (company_id) REFERENCES companies(id)
@@ -73,6 +75,8 @@ CREATE INDEX IF NOT EXISTS idx_jobs_muse_id ON jobs(muse_job_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_publication_date ON jobs(publication_date);
 CREATE INDEX IF NOT EXISTS idx_jobs_remote ON jobs(is_remote);
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_last_seen_at ON jobs(last_seen_at);
 
 -- Job-Locations junction table (many-to-many relationship)
 CREATE TABLE IF NOT EXISTS job_locations (
