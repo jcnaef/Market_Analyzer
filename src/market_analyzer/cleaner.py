@@ -22,7 +22,7 @@ def load_skills(filename="skills.json"):
     """
     Loads skill taxonomy from a JSON file and converts lists to sets for faster O(1) lookups.
     """
-    filepath = ROOT_DIR / filename
+    filepath = ROOT_DIR / "data" / filename
     if not os.path.exists(filepath):
         print(f"Warning: {filepath} not found. Skill extraction will be skipped.")
         return {}
@@ -37,7 +37,7 @@ def load_job_data(filename):
     """
     Loads job data from a JSON file and normalizes it into a DataFrame.
     """
-    filepath = ROOT_DIR / filename
+    filepath = ROOT_DIR / "data" / filename
     if not os.path.exists(filepath):
         print(f"Error: Input file '{filepath}' not found.")
         return pd.DataFrame()
@@ -208,7 +208,7 @@ def process_dataset(data_file, skills_file="skills.json"):
     df = pd.concat([df, skills_df], axis=1)
 
     # 7. Save to CSV
-    output_path = ROOT_DIR / "processed_jobs.csv"
+    output_path = ROOT_DIR / "data" / "processed_jobs.csv"
     df.to_csv(output_path, index=False)
     print(f"✓ Saved {len(df)} processed jobs to {output_path}")
 
@@ -227,5 +227,5 @@ if __name__ == "__main__":
         cols_to_show = ['job_city', 'is_remote']
         existing_cols = [c for c in cols_to_show if c in final_df.columns]
         print(final_df[existing_cols].head())
-        output_path = ROOT_DIR / "processed_jobs.csv"
+        output_path = ROOT_DIR / "data" / "processed_jobs.csv"
         final_df.to_csv(output_path, index=False)

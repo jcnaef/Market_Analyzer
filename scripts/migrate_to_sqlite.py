@@ -11,9 +11,15 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Tuple, List, Optional
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
 
 class DatabaseMigrator:
-    def __init__(self, db_path: str = "market_analyzer.db", csv_path: str = "processed_jobs.csv"):
+    def __init__(self, db_path: str = None, csv_path: str = None):
+        if db_path is None:
+            db_path = str(ROOT_DIR / "data" / "market_analyzer.db")
+        if csv_path is None:
+            csv_path = str(ROOT_DIR / "data" / "processed_jobs.csv")
         self.db_path = db_path
         self.csv_path = csv_path
         self.conn = None
@@ -46,7 +52,7 @@ class DatabaseMigrator:
 
     def initialize_schema(self):
         """Create tables from schema.sql"""
-        schema_path = Path("schema.sql")
+        schema_path = ROOT_DIR / "data" / "schema.sql"
         if not schema_path.exists():
             raise FileNotFoundError("schema.sql not found. Please create it first.")
 
@@ -387,8 +393,5 @@ class DatabaseMigrator:
 
 
 if __name__ == "__main__":
-    migrator = DatabaseMigrator(
-        db_path="market_analyzer.db",
-        csv_path="processed_jobs.csv"
-    )
+    migrator = DatabaseMigrator()
     migrator.migrate()

@@ -16,12 +16,13 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
-# Add src to path for imports
-ROOT_DIR = Path(__file__).resolve().parent
+# Add src and scripts to path for imports
+ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR / "src"))
+sys.path.insert(0, str(ROOT_DIR / "scripts"))
 
-from market_analyzer.api_handler import collect_all_states, save_to_file
-from market_analyzer.ai_data_cleaner import process_dataset
+from market_analyzer.collector import collect_all_states, save_to_file
+from market_analyzer.cleaner import process_dataset
 from migrate_to_sqlite import DatabaseMigrator
 
 
@@ -53,7 +54,7 @@ def run_collection(skip_api=False):
             save_to_file(jobs, filename="muse_jobs.json")
         else:
             # Verify muse_jobs.json exists
-            muse_file = ROOT_DIR / "muse_jobs.json"
+            muse_file = ROOT_DIR / "data" / "muse_jobs.json"
             if not muse_file.exists():
                 print("✗ muse_jobs.json not found. Cannot skip API calls without existing data.")
                 return False
@@ -69,8 +70,8 @@ def run_collection(skip_api=False):
         print("\n🗄️  STEP 3: Upserting to SQLite database..." if skip_api else "\n🗄️  STEP 4: Upserting to SQLite database...")
         print("-" * 70)
         migrator = DatabaseMigrator(
-            db_path="market_analyzer.db",
-            csv_path="processed_jobs.csv"
+            db_path=str(ROOT_DIR / "data" / "market_analyzer.db"),
+            csv_path=str(ROOT_DIR / "data" / "processed_jobs.csv")
         )
         migrator.migrate()
 
