@@ -1,78 +1,111 @@
-# Job Market Skill Recommender (Full-Stack)
+# Job Market Skill Recommender
 
-## Overview
-The Job Market Skill Recommender is a full-stack data engineering and machine learning application designed to analyze software engineering job postings and provide actionable career insights. 
+A full-stack application that analyzes software engineering job postings from The Muse API and provides actionable career insights. Discover in-demand skills, explore salary trends, identify skill gaps, and analyze your resume against current market demands.
 
-It features an automated data pipeline that fetches real job descriptions, an NLP engine to extract and normalize technical skills, a FastAPI backend to calculate skill co-occurrences, and a React frontend for users to interactively explore what skills are most in-demand by location or tech stack.
+## Features
 
-## Key Features
-* **Full-Stack UI:** A responsive React dashboard (`App.jsx`) that visualizes skill correlations and location-based job market trends.
-* **Automated Data Ingestion:** Fetches software engineering job postings directly from The Muse API.
-* **Advanced NLP Processing:** Cleans HTML artifacts using `BeautifulSoup` and extracts entities. The project supports both taxonomy-based regex extraction and advanced Named Entity Recognition (NER) using `spaCy` and `skillNer`.
-* **Recommendation Engines:** Calculates the probability of skill pairings using a normalized co-occurrence matrix, and maps out geographic/remote skill trends.
-* **Diagnostic Tooling:** Built-in debugging scripts to verify matrix integrity and data parsing.
+- **Dashboard** — Overview of top skills, job statistics, and remote vs. onsite distribution
+- **Job Board** — Filterable, paginated job listings with search, level, location, and skill filters
+- **Skill Explorer** — Search skill correlations and view location-based skill demand trends
+- **Salary Insights** — Box plot visualizations of salary distributions by job level or skill
+- **Skill Gap Analyzer** — Input your known skills and get recommendations for high-demand skills to learn
+- **Resume Analyzer** — Upload a PDF/DOCX resume to extract skills and compare against market demand
+
+## Tech Stack
+
+| Layer | Technologies |
+|-------|-------------|
+| **Backend** | Python 3.10+, FastAPI, SQLite, pandas, NLTK, BeautifulSoup4 |
+| **Frontend** | React 19, Vite, Tailwind CSS, Recharts, React Router |
+| **Testing** | pytest (86 tests) |
+| **Package Management** | Poetry (Python), npm (Node) |
 
 ## Project Structure
 
-### Source (`src/market_analyzer/`)
-* `collector.py`: Pings The Muse API and downloads raw job listings into `data/muse_jobs.json`.
-* `cleaner.py`: Parses the JSON, strips HTML, extracts salaries/locations, and matches text against a skill taxonomy. Outputs a clean `data/processed_jobs.csv`.
-* `nlp_models.py`: An experimental advanced extraction module utilizing `spaCy` (`en_core_web_lg`) and `SkillExtractor` for deep semantic parsing.
-* `diagnostics.py`: A diagnostic utility to verify data integrity.
-* `skill_recommender.py`: Queries the database to calculate skill co-occurrence probabilities and identify related skills.
-* `location_recommender.py`: Queries the database to identify the most in-demand skills by location or remote status.
-* `server.py`: The FastAPI application that exposes the recommendation engines via REST endpoints (`/skill/{name}` and `/location/{city}`).
+```
+Market_Analyzer/
+├── src/market_analyzer/       # Backend modules
+│   ├── server.py              # FastAPI REST API
+│   ├── collector.py           # Fetches jobs from The Muse API
+│   ├── cleaner.py             # HTML cleaning and skill extraction
+│   ├── skill_recommender.py   # Skill co-occurrence analysis
+│   ├── location_recommender.py# Location-based skill demand
+│   ├── db_queries.py          # Database query utilities
+│   └── nlp_models.py          # Advanced NLP extraction (spaCy)
+├── frontend/src/              # React frontend
+│   ├── pages/                 # Dashboard, JobBoard, SkillExplorer,
+│   │                          # SalaryInsights, SkillGapAnalyzer, ResumeAnalyzer
+│   ├── components/            # Reusable UI components
+│   ├── App.jsx                # Routing
+│   └── api.js                 # API client
+├── scripts/                   # Data pipeline scripts
+├── data/                      # SQLite database and schema
+├── tests/                     # Test suite
+├── pyproject.toml             # Python dependencies
+└── run.sh                     # Backend startup script
+```
 
-### Data (`data/`)
-* `market_analyzer.db`: SQLite database containing jobs, skills, locations, and their relationships (created by migration scripts).
-* `schema.sql`: Database schema definition.
+## Getting Started
 
-### Scripts (`scripts/`)
-* `run_collection.py`: Orchestrator script for the automated job collection pipeline.
-* `migrate_to_sqlite.py`: Migration script that populates the SQLite database from processed CSV data.
-* `add_job_status_migration.py`: One-time migration to add status columns.
+### Prerequisites
 
-### Tests (`tests/`)
-* `test_queries.py`: Tests key database queries for the recommendation engine.
-* `verify_database.py`: Utility to verify database integrity and schema.
+- Python 3.10+
+- Node.js
+- [Poetry](https://python-poetry.org/)
 
-### Frontend (`frontend/`)
-* `App.jsx`: The main React component that handles state, API fetching, and rendering the interactive results dashboard.
+### 1. Install Dependencies
 
-## Prerequisites
-* **Backend:** Python 3.8+, `pandas`, `nltk`, `beautifulsoup4`, `fastapi`, `uvicorn`, `requests`, `spacy`, `skillNer`
-* **Frontend:** Node.js and `npm` (or `yarn`)
-* A valid `skills.json` taxonomy file in the root directory.
+```bash
+# Backend
+poetry install
 
-## Installation & Setup
+# Frontend
+cd frontend && npm install
+```
 
-### 1. Build the Data Model
-First, fetch the raw data and run it through the cleaning pipeline to generate the CSV.
+### 2. Build the Data Model
+
+Fetch raw job data and run the cleaning pipeline:
+
 ```bash
 python src/market_analyzer/collector.py
 python src/market_analyzer/cleaner.py
 ```
 
-### 2. Populate the Database
-Migrate the processed CSV data into the SQLite database.
+### 3. Populate the Database
+
+Migrate processed data into SQLite:
+
 ```bash
 python scripts/migrate_to_sqlite.py
-python tests/verify_database.py
 ```
 
-### 3. Start the Backend API
-Launch the FastAPI server. It will run on port 8000 and handle requests from the frontend.
+### 4. Start the Application
+
 ```bash
+# Terminal 1 — Backend API (http://localhost:8000)
 ./run.sh
+
+# Terminal 2 — Frontend dev server (http://localhost:5173)
+cd frontend && npm run dev
 ```
 
-### 4. Start the React Frontend
-Open a new terminal window, navigate to your frontend directory, install the dependencies, and start the development server (typically runs on port 5173).
+### Running Tests
+
 ```bash
-./start_frontend.sh
+pytest tests/
 ```
-### API Endpoints
-If interacting directly with the backend (http://127.0.0.1:8000):
-* GET /skill/{skill_name}: Returns the top 10 skills most frequently associated with a target skill
-* GET /location/{city}: Returns the top in-demand skills for a specific city or for Remote roles
 
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/skill/{name}` | Top 10 correlated skills |
+| `GET` | `/location/{city}` | In-demand skills for a location |
+| `GET` | `/api/dashboard/stats` | Dashboard statistics |
+| `GET` | `/api/jobs` | Paginated job listings (supports filters) |
+| `GET` | `/api/salary/insights` | Salary analysis by level or skills |
+| `POST` | `/api/skill-gap/analyze` | Skill gap analysis |
+| `POST` | `/api/resume/analyze` | Resume upload and analysis |
+| `GET` | `/skills/autocomplete` | Skill search suggestions |
+| `GET` | `/locations/autocomplete` | Location search suggestions |
