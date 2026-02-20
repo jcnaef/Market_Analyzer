@@ -1,10 +1,15 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="light">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Market Analyzer</title>
+    <script>
+      // Apply saved theme before render to avoid flash
+      const t = localStorage.getItem('theme');
+      if (t === 'dark') document.documentElement.classList.replace('light', 'dark');
+    </script>
   </head>
   <body>
     <div id="root"></div>

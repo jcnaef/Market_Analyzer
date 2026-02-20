@@ -21,29 +21,31 @@ def _seed_database(conn):
     c.execute("INSERT INTO locations (id, city, state, country, is_remote) VALUES (2, 'San Francisco', 'CA', 'USA', 0)")
     c.execute("INSERT INTO locations (id, city, state, country, is_remote) VALUES (3, 'Remote', NULL, 'USA', 1)")
 
-    # 2 skill categories
+    # 3 skill categories (including Soft_Skills for exclusion testing)
     c.execute("INSERT INTO skill_categories (id, name) VALUES (1, 'Languages')")
     c.execute("INSERT INTO skill_categories (id, name) VALUES (2, 'Frameworks_Libs')")
+    c.execute("INSERT INTO skill_categories (id, name) VALUES (3, 'Soft_Skills')")
 
-    # 4 skills
+    # 5 skills (4 technical + 1 soft)
     c.execute("INSERT INTO skills (id, name, category_id) VALUES (1, 'python', 1)")
     c.execute("INSERT INTO skills (id, name, category_id) VALUES (2, 'javascript', 1)")
     c.execute("INSERT INTO skills (id, name, category_id) VALUES (3, 'react', 2)")
     c.execute("INSERT INTO skills (id, name, category_id) VALUES (4, 'django', 2)")
+    c.execute("INSERT INTO skills (id, name, category_id) VALUES (5, 'communication', 3)")
 
-    # 3 jobs
+    # 3 jobs with salary, job_url, publication_date, job_level
     c.execute("""INSERT INTO jobs (id, muse_job_id, title, company_id, description, clean_description,
-                salary_min, salary_max, is_remote, status)
+                salary_min, salary_max, is_remote, job_level, publication_date, job_url, status)
                 VALUES (1, 'J001', 'Backend Dev', 1, '<p>Build APIs</p>', 'Build APIs',
-                90000, 120000, 0, 'open')""")
+                90000, 120000, 0, 'Mid Level', '2025-01-15', 'https://example.com/j1', 'open')""")
     c.execute("""INSERT INTO jobs (id, muse_job_id, title, company_id, description, clean_description,
-                salary_min, salary_max, is_remote, status)
+                salary_min, salary_max, is_remote, job_level, publication_date, job_url, status)
                 VALUES (2, 'J002', 'Frontend Dev', 1, '<p>Build UIs</p>', 'Build UIs',
-                85000, 115000, 0, 'open')""")
+                85000, 115000, 0, 'Entry Level', '2025-02-10', 'https://example.com/j2', 'open')""")
     c.execute("""INSERT INTO jobs (id, muse_job_id, title, company_id, description, clean_description,
-                salary_min, salary_max, is_remote, status)
+                salary_min, salary_max, is_remote, job_level, publication_date, job_url, status)
                 VALUES (3, 'J003', 'Fullstack Dev', 2, '<p>Do everything</p>', 'Do everything',
-                100000, 140000, 1, 'open')""")
+                100000, 140000, 1, 'Senior Level', '2025-03-05', 'https://example.com/j3', 'open')""")
 
     # job_locations links
     c.execute("INSERT INTO job_locations (job_id, location_id) VALUES (1, 1)")  # Job1 -> New York
@@ -52,9 +54,10 @@ def _seed_database(conn):
     c.execute("INSERT INTO job_locations (job_id, location_id) VALUES (3, 3)")  # Job3 -> Remote
 
     # job_skills links
-    # Job1 (Backend): python, django
+    # Job1 (Backend): python, django, communication
     c.execute("INSERT INTO job_skills (job_id, skill_id) VALUES (1, 1)")
     c.execute("INSERT INTO job_skills (job_id, skill_id) VALUES (1, 4)")
+    c.execute("INSERT INTO job_skills (job_id, skill_id) VALUES (1, 5)")
     # Job2 (Frontend): javascript, react
     c.execute("INSERT INTO job_skills (job_id, skill_id) VALUES (2, 2)")
     c.execute("INSERT INTO job_skills (job_id, skill_id) VALUES (2, 3)")
@@ -109,7 +112,10 @@ def test_client(db_path, monkeypatch):
     from market_analyzer.location_recommender import LocationSkillRecommender
     from market_analyzer import server
     from starlette.testclient import TestClient
+    from pathlib import Path
 
     monkeypatch.setattr(server, "skill_brain", SkillRecommender(db_path))
     monkeypatch.setattr(server, "location_brain", LocationSkillRecommender(db_path))
+    monkeypatch.setattr(server, "DB_PATH", db_path)
+    monkeypatch.setattr(server, "db_file", Path(db_path))
     return TestClient(server.app)
