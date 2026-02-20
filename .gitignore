@@ -7,10 +7,6 @@ __pycache__/
 data/*.csv
 data/*.db
 data/*.json
-*.json
-*.csv
-*.db
-*.lock
 
 # C extensions
 *.so
