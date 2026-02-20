@@ -14,21 +14,29 @@ It features an automated data pipeline that fetches real job descriptions, an NL
 
 ## Project Structure
 
-### Data Pipeline & NLP
-* `api_handler.py`: Pings The Muse API and downloads raw job listings into `muse_jobs.json`.
-* `ai_data_cleaner.py`: Parses the JSON, strips HTML, extracts salaries/locations, and matches text against a skill taxonomy. Outputs a clean `processed_jobs.csv`.
-* `nlp.py`: An experimental advanced extraction module utilizing `spaCy` (`en_core_web_lg`) and `SkillExtractor` for deep semantic parsing.
-* `debug.py`: A diagnostic utility to verify data integrity.
+### Source (`src/market_analyzer/`)
+* `collector.py`: Pings The Muse API and downloads raw job listings into `data/muse_jobs.json`.
+* `cleaner.py`: Parses the JSON, strips HTML, extracts salaries/locations, and matches text against a skill taxonomy. Outputs a clean `data/processed_jobs.csv`.
+* `nlp_models.py`: An experimental advanced extraction module utilizing `spaCy` (`en_core_web_lg`) and `SkillExtractor` for deep semantic parsing.
+* `diagnostics.py`: A diagnostic utility to verify data integrity.
+* `skill_recommender.py`: Queries the database to calculate skill co-occurrence probabilities and identify related skills.
+* `location_recommender.py`: Queries the database to identify the most in-demand skills by location or remote status.
+* `server.py`: The FastAPI application that exposes the recommendation engines via REST endpoints (`/skill/{name}` and `/location/{city}`).
 
-### Database & Backend (FastAPI)
+### Data (`data/`)
 * `market_analyzer.db`: SQLite database containing jobs, skills, locations, and their relationships (created by migration scripts).
-* `migrate_to_sqlite.py`: Migration script that populates the SQLite database from processed CSV data.
-* `verify_database.py`: Utility to verify database integrity and schema.
-* `ai_skill_recommendation.py`: Queries the database to calculate skill co-occurrence probabilities and identify related skills.
-* `ai_location_skill_recommendation.py`: Queries the database to identify the most in-demand skills by location or remote status.
-* `recommendation_api.py`: The FastAPI application that exposes the recommendation engines via REST endpoints (`/skill/{name}` and `/location/{city}`).
+* `schema.sql`: Database schema definition.
 
-### Frontend (React)
+### Scripts (`scripts/`)
+* `run_collection.py`: Orchestrator script for the automated job collection pipeline.
+* `migrate_to_sqlite.py`: Migration script that populates the SQLite database from processed CSV data.
+* `add_job_status_migration.py`: One-time migration to add status columns.
+
+### Tests (`tests/`)
+* `test_queries.py`: Tests key database queries for the recommendation engine.
+* `verify_database.py`: Utility to verify database integrity and schema.
+
+### Frontend (`frontend/`)
 * `App.jsx`: The main React component that handles state, API fetching, and rendering the interactive results dashboard.
 
 ## Prerequisites
@@ -41,15 +49,15 @@ It features an automated data pipeline that fetches real job descriptions, an NL
 ### 1. Build the Data Model
 First, fetch the raw data and run it through the cleaning pipeline to generate the CSV.
 ```bash
-python src/market_analyzer/api_handler.py
-python src/market_analyzer/ai_data_cleaner.py
+python src/market_analyzer/collector.py
+python src/market_analyzer/cleaner.py
 ```
 
 ### 2. Populate the Database
 Migrate the processed CSV data into the SQLite database.
 ```bash
-python migrate_to_sqlite.py
-python verify_database.py
+python scripts/migrate_to_sqlite.py
+python tests/verify_database.py
 ```
 
 ### 3. Start the Backend API
