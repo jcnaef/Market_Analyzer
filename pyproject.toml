@@ -21,6 +21,18 @@ dependencies = [
 [tool.poetry]
 packages = [{include = "market_analyzer", from = "src"}]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+spec_header_format = "{module_path}:"
+spec_test_format = "{result} {name}"
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.0.2,<10.0.0)",
+    "pytest-spec (>=5.2.0,<6.0.0)",
+    "httpx (>=0.28.1,<0.29.0)"
+]
