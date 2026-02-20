@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
@@ -21,6 +22,7 @@ function formatSalary(val) {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -77,7 +79,12 @@ export default function Dashboard() {
                 itemStyle={{ color: "#f9fafb" }}
                 labelStyle={{ color: "#f9fafb" }}
               />
-              <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+              <Bar
+                dataKey="count"
+                radius={[0, 4, 4, 0]}
+                cursor="pointer"
+                onClick={(data) => navigate(`/jobs?skill=${encodeURIComponent(data.name)}`)}
+              >
                 {skillChartData.map((entry, i) => (
                   <Cell key={i} fill={entry.fill} />
                 ))}

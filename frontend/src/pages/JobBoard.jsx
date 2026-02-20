@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getJobs, getFilterLocations, getSkillAutocomplete, getLocationAutocomplete } from "../api";
 import AutocompleteInput from "../components/AutocompleteInput";
 import SkillBadge from "../components/SkillBadge";
@@ -27,6 +28,7 @@ function relativeDate(dateStr) {
 }
 
 export default function JobBoard() {
+  const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -37,7 +39,7 @@ export default function JobBoard() {
   // Filters
   const [search, setSearch] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
-  const [skillFilter, setSkillFilter] = useState("");
+  const [skillFilter, setSkillFilter] = useState(() => searchParams.get("skill") || "");
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [sort, setSort] = useState("date_desc");
 
