@@ -60,6 +60,7 @@ TOP_CITIES_BY_STATE = {
     "Wisconsin": "Milwaukee, WI",
     "Wyoming": "Cheyenne, WY"
 }
+
 def get_muse_jobs(category="Software Engineering", location="New York, NY", page_limit=3):
     """Fetch jobs from a single location."""
     all_jobs = []

@@ -4,16 +4,18 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { analyzeResume } from "../api";
+import { useResumeContext } from "../context/ResumeContext";
 import SkillBadge from "../components/SkillBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
 export default function ResumeAnalyzer() {
   const navigate = useNavigate();
+  const { resumeResults, setResumeResults, clearResume } = useResumeContext();
   const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(resumeResults);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -39,7 +41,7 @@ export default function ResumeAnalyzer() {
     setLoading(true);
     setError(null);
     analyzeResume(file)
-      .then(setResults)
+      .then((data) => { setResults(data); setResumeResults(data); })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
@@ -211,13 +213,19 @@ export default function ResumeAnalyzer() {
             )}
           </div>
 
-          {/* Skill gap button */}
-          <div className="text-center">
+          {/* Action buttons */}
+          <div className="flex justify-center gap-4">
             <button
               onClick={goToSkillGap}
               className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
             >
               Analyze Skill Gap With These Skills
+            </button>
+            <button
+              onClick={() => { clearResume(); setResults(null); setFile(null); }}
+              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+            >
+              Clear Cached Resume
             </button>
           </div>
         </>

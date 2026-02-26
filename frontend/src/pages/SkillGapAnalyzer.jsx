@@ -4,6 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { analyzeSkillGap, getSkillAutocomplete } from "../api";
+import { useResumeContext } from "../context/ResumeContext";
 import AutocompleteInput from "../components/AutocompleteInput";
 import SkillBadge from "../components/SkillBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -11,18 +12,21 @@ import ErrorMessage from "../components/ErrorMessage";
 
 export default function SkillGapAnalyzer() {
   const location = useLocation();
+  const { resumeSkills } = useResumeContext();
   const [knownSkills, setKnownSkills] = useState([]);
   const [skillInput, setSkillInput] = useState("");
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Accept pre-filled skills via router state
+  // Accept pre-filled skills via router state, fall back to cached resume skills
   useEffect(() => {
     if (location.state?.skills) {
       setKnownSkills(location.state.skills);
+    } else if (resumeSkills.length > 0) {
+      setKnownSkills(resumeSkills);
     }
-  }, [location.state]);
+  }, [location.state, resumeSkills]);
 
   const addSkill = (skill) => {
     if (skill && !knownSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) {
