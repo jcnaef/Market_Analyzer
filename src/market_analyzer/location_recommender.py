@@ -1,13 +1,16 @@
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 
 class LocationSkillRecommender:
-    def __init__(self, db_path):
-        self.db_path = db_path
-        conn = sqlite3.connect(self.db_path)
+    def __init__(self, db_url):
+        self.db_url = db_url
+        conn = psycopg2.connect(self.db_url)
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT DISTINCT CASE WHEN is_remote = 1 THEN 'Remote' ELSE city END
-            FROM locations
+            SELECT DISTINCT l.city FROM locations l
+            UNION
+            SELECT 'Remote' WHERE EXISTS (SELECT 1 FROM jobs WHERE is_remote = TRUE)
         """)
         self.known_locations = [row[0] for row in cursor.fetchall()]
         conn.close()
@@ -22,7 +25,7 @@ class LocationSkillRecommender:
         2. Falls back to partial match (user input contained in location name)
 
         The SQL query:
-        1. Filters jobs by location: either is_remote=1 for "Remote" or exact city match
+        1. Filters jobs by location: either j.is_remote=TRUE for "Remote" or exact city match
         2. Joins to skills through job_skills (all skills required for those jobs)
         3. Counts distinct jobs requiring each skill
         4. Returns top skills sorted by frequency
@@ -36,9 +39,8 @@ class LocationSkillRecommender:
             return None
 
         target = matches[0]
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        conn = psycopg2.connect(self.db_url)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
         cursor.execute("""
             SELECT s.name, COUNT(DISTINCT j.id) AS count
@@ -47,11 +49,11 @@ class LocationSkillRecommender:
             JOIN locations l ON jl.location_id = l.id
             JOIN job_skills js ON j.id = js.job_id
             JOIN skills s ON js.skill_id = s.id
-            WHERE (l.is_remote = 1 AND :loc = 'Remote')
-               OR (l.is_remote = 0 AND l.city = :loc)
-            GROUP BY s.id
+            WHERE (j.is_remote = TRUE AND %(loc)s = 'Remote')
+               OR (j.is_remote = FALSE AND l.city = %(loc)s)
+            GROUP BY s.id, s.name
             ORDER BY count DESC
-            LIMIT :limit
+            LIMIT %(limit)s
         """, {"loc": target, "limit": limit})
 
         top_skills = [{"skill": row["name"], "count": row["count"]}

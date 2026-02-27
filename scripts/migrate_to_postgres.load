@@ -1,0 +1,9 @@
+LOAD DATABASE
+    FROM sqlite:///home/jcnaef/School/CS-4600/Market_Analyzer/data/market_analyzer.db
+    INTO postgresql:///market_analyzer
+
+WITH include drop, create tables, create indexes, reset sequences,
+     data only, schema only
+
+SET work_mem to '16MB', maintenance_work_mem to '512 MB'
+;

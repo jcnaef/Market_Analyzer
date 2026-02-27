@@ -1,9 +1,11 @@
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 
 class SkillRecommender:
-    def __init__(self, db_path):
-        self.db_path = db_path
-        conn = sqlite3.connect(self.db_path)
+    def __init__(self, db_url):
+        self.db_url = db_url
+        conn = psycopg2.connect(self.db_url)
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM skills")
         count = cursor.fetchone()[0]
@@ -22,30 +24,29 @@ class SkillRecommender:
         4. Returns top skills by probability, sorted descending
         """
         skill_lower = skill_name.lower()
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
+        conn = psycopg2.connect(self.db_url)
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-        cursor.execute("SELECT id FROM skills WHERE LOWER(name) = ? LIMIT 1", (skill_lower,))
+        cursor.execute("SELECT id FROM skills WHERE LOWER(name) = %s LIMIT 1", (skill_lower,))
         if cursor.fetchone() is None:
             conn.close()
             return None
 
         cursor.execute("""
             SELECT s2.name,
-                   CAST(COUNT(*) AS FLOAT) / (
+                   COUNT(*)::FLOAT / (
                        SELECT COUNT(*) FROM job_skills js_inner
                        JOIN skills s_inner ON js_inner.skill_id = s_inner.id
-                       WHERE LOWER(s_inner.name) = ?
+                       WHERE LOWER(s_inner.name) = %s
                    ) AS score
             FROM job_skills js1
             JOIN job_skills js2 ON js1.job_id = js2.job_id
             JOIN skills s1 ON js1.skill_id = s1.id
             JOIN skills s2 ON js2.skill_id = s2.id
-            WHERE LOWER(s1.name) = ? AND LOWER(s2.name) != ?
-            GROUP BY s2.id
+            WHERE LOWER(s1.name) = %s AND LOWER(s2.name) != %s
+            GROUP BY s2.id, s2.name
             ORDER BY score DESC
-            LIMIT ?
+            LIMIT %s
         """, (skill_lower, skill_lower, skill_lower, limit))
 
         results = [{"skill": row["name"], "score": round(row["score"], 2)}

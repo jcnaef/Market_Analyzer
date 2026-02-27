@@ -1,10 +1,14 @@
-import sqlite3
 import tempfile
 import os
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from pydantic import BaseModel
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+from .db_config import DATABASE_URL
 from .skill_recommender import SkillRecommender
 from .location_recommender import LocationSkillRecommender
 from . import db_queries
@@ -22,15 +26,14 @@ app.add_middleware(
 )
 
 # Initialize
-db_file = ROOT_DIR / "data" / "market_analyzer.db"
-if db_file.exists():
-    skill_brain = SkillRecommender(str(db_file))
-    location_brain = LocationSkillRecommender(str(db_file))
-else:
+try:
+    skill_brain = SkillRecommender(DATABASE_URL)
+    location_brain = LocationSkillRecommender(DATABASE_URL)
+except Exception:
     skill_brain = None
     location_brain = None
 
-DB_PATH = str(db_file)
+DB_URL = DATABASE_URL
 
 # Load skill taxonomy once for resume analysis
 _taxonomy = load_skills()
@@ -77,13 +80,13 @@ def skills_autocomplete(q: str = "", limit: int = 8):
         raise HTTPException(status_code=500, detail="Skill database not available")
     prefix = q.lower() + "%"
     try:
-        conn = sqlite3.connect(skill_brain.db_path)
+        conn = psycopg2.connect(skill_brain.db_url)
         cursor = conn.cursor()
         cursor.execute(
             """SELECT s.name FROM skills s
                JOIN skill_categories sc ON s.category_id = sc.id
-               WHERE LOWER(s.name) LIKE LOWER(?) AND sc.name != 'Soft_Skills'
-               ORDER BY s.name ASC LIMIT ?""",
+               WHERE LOWER(s.name) LIKE LOWER(%s) AND sc.name != 'Soft_Skills'
+               ORDER BY s.name ASC LIMIT %s""",
             (prefix, limit),
         )
         results = cursor.fetchall()
@@ -110,9 +113,7 @@ def locations_autocomplete(q: str = "", limit: int = 8):
 
 @app.get("/api/dashboard/stats")
 def dashboard_stats():
-    if not db_file.exists():
-        raise HTTPException(status_code=500, detail="Database not available")
-    return db_queries.get_dashboard_stats(DB_PATH)
+    return db_queries.get_dashboard_stats(DB_URL)
 
 
 @app.get("/api/jobs")
@@ -126,10 +127,8 @@ def list_jobs(
     search: str | None = None,
     sort: str = "date_desc",
 ):
-    if not db_file.exists():
-        raise HTTPException(status_code=500, detail="Database not available")
     return db_queries.get_jobs(
-        DB_PATH, page=page, per_page=per_page, level=level,
+        DB_URL, page=page, per_page=per_page, level=level,
         location=location, skill=skill, remote_only=remote_only,
         search=search, sort=sort,
     )
@@ -137,10 +136,8 @@ def list_jobs(
 
 @app.get("/api/salary/insights")
 def salary_insights(group_by: str = "level", names: str | None = None):
-    if not db_file.exists():
-        raise HTTPException(status_code=500, detail="Database not available")
     name_list = [n.strip() for n in names.split(",") if n.strip()] if names else None
-    result = db_queries.get_salary_insights(DB_PATH, group_by=group_by, names=name_list)
+    result = db_queries.get_salary_insights(DB_URL, group_by=group_by, names=name_list)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
@@ -148,16 +145,11 @@ def salary_insights(group_by: str = "level", names: str | None = None):
 
 @app.post("/api/skill-gap/analyze")
 def skill_gap_analyze(request: SkillGapRequest):
-    if not db_file.exists():
-        raise HTTPException(status_code=500, detail="Database not available")
-    return db_queries.analyze_skill_gap(DB_PATH, request.known_skills)
+    return db_queries.analyze_skill_gap(DB_URL, request.known_skills)
 
 
 @app.post("/api/resume/analyze")
 async def resume_analyze(file: UploadFile = File(...)):
-    if not db_file.exists():
-        raise HTTPException(status_code=500, detail="Database not available")
-
     filename = file.filename or ""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
 
@@ -195,18 +187,14 @@ async def resume_analyze(file: UploadFile = File(...)):
     # Extract skills using existing taxonomy
     extracted = extract_skills_from_text(text, _taxonomy)
 
-    return db_queries.analyze_resume_skills(DB_PATH, extracted)
+    return db_queries.analyze_resume_skills(DB_URL, extracted)
 
 
 @app.get("/api/filters/levels")
 def filter_levels():
-    if not db_file.exists():
-        raise HTTPException(status_code=500, detail="Database not available")
-    return {"levels": db_queries.get_filter_levels(DB_PATH)}
+    return {"levels": db_queries.get_filter_levels(DB_URL)}
 
 
 @app.get("/api/filters/locations")
 def filter_locations():
-    if not db_file.exists():
-        raise HTTPException(status_code=500, detail="Database not available")
-    return {"locations": db_queries.get_filter_locations(DB_PATH)}
+    return {"locations": db_queries.get_filter_locations(DB_URL)}

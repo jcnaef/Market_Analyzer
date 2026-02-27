@@ -1,11 +1,14 @@
 """Shared fixtures for the Market Analyzer test suite."""
 
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 import pytest
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT_DIR / "data" / "schema.sql"
+
+TEST_DB_URL = "postgresql:///market_analyzer_test?host=/var/run/postgresql"
 
 
 def _seed_database(conn):
@@ -13,13 +16,13 @@ def _seed_database(conn):
     c = conn.cursor()
 
     # 2 companies
-    c.execute("INSERT INTO companies (id, muse_company_id, name, short_name) VALUES (1, 'C100', 'Acme Corp', 'acme')")
-    c.execute("INSERT INTO companies (id, muse_company_id, name, short_name) VALUES (2, 'C200', 'Globex Inc', 'globex')")
+    c.execute("INSERT INTO companies (id, name, short_name) VALUES (1, 'Acme Corp', 'acme')")
+    c.execute("INSERT INTO companies (id, name, short_name) VALUES (2, 'Globex Inc', 'globex')")
 
     # 3 locations (New York, San Francisco, Remote)
-    c.execute("INSERT INTO locations (id, city, state, country, is_remote) VALUES (1, 'New York', 'NY', 'USA', 0)")
-    c.execute("INSERT INTO locations (id, city, state, country, is_remote) VALUES (2, 'San Francisco', 'CA', 'USA', 0)")
-    c.execute("INSERT INTO locations (id, city, state, country, is_remote) VALUES (3, 'Remote', NULL, 'USA', 1)")
+    c.execute("INSERT INTO locations (id, city, state, country) VALUES (1, 'New York', 'NY', 'USA')")
+    c.execute("INSERT INTO locations (id, city, state, country) VALUES (2, 'San Francisco', 'CA', 'USA')")
+    c.execute("INSERT INTO locations (id, city, state, country) VALUES (3, 'Remote', NULL, 'USA')")
 
     # 3 skill categories (including Soft_Skills for exclusion testing)
     c.execute("INSERT INTO skill_categories (id, name) VALUES (1, 'Languages')")
@@ -34,18 +37,25 @@ def _seed_database(conn):
     c.execute("INSERT INTO skills (id, name, category_id) VALUES (5, 'communication', 3)")
 
     # 3 jobs with salary, job_url, publication_date, job_level
-    c.execute("""INSERT INTO jobs (id, muse_job_id, title, company_id, description, clean_description,
+    c.execute("""INSERT INTO jobs (id, external_job_id, title, company_id, description,
                 salary_min, salary_max, is_remote, job_level, publication_date, job_url, status)
-                VALUES (1, 'J001', 'Backend Dev', 1, '<p>Build APIs</p>', 'Build APIs',
-                90000, 120000, 0, 'Mid Level', '2025-01-15', 'https://example.com/j1', 'open')""")
-    c.execute("""INSERT INTO jobs (id, muse_job_id, title, company_id, description, clean_description,
+                VALUES (1, 'EXT-001', 'Backend Dev', 1, 'Build APIs',
+                90000, 120000, FALSE, 'Mid Level', '2025-01-15', 'https://example.com/j1', 'open')""")
+    c.execute("""INSERT INTO jobs (id, external_job_id, title, company_id, description,
                 salary_min, salary_max, is_remote, job_level, publication_date, job_url, status)
-                VALUES (2, 'J002', 'Frontend Dev', 1, '<p>Build UIs</p>', 'Build UIs',
-                85000, 115000, 0, 'Entry Level', '2025-02-10', 'https://example.com/j2', 'open')""")
-    c.execute("""INSERT INTO jobs (id, muse_job_id, title, company_id, description, clean_description,
+                VALUES (2, 'EXT-002', 'Frontend Dev', 1, 'Build UIs',
+                85000, 115000, FALSE, 'Entry Level', '2025-02-10', 'https://example.com/j2', 'open')""")
+    c.execute("""INSERT INTO jobs (id, external_job_id, title, company_id, description,
                 salary_min, salary_max, is_remote, job_level, publication_date, job_url, status)
-                VALUES (3, 'J003', 'Fullstack Dev', 2, '<p>Do everything</p>', 'Do everything',
-                100000, 140000, 1, 'Senior Level', '2025-03-05', 'https://example.com/j3', 'open')""")
+                VALUES (3, 'EXT-003', 'Fullstack Dev', 2, 'Do everything',
+                100000, 140000, TRUE, 'Senior Level', '2025-03-05', 'https://example.com/j3', 'open')""")
+
+    # Reset sequences to avoid conflicts after explicit ID inserts
+    c.execute("SELECT setval('companies_id_seq', (SELECT MAX(id) FROM companies))")
+    c.execute("SELECT setval('locations_id_seq', (SELECT MAX(id) FROM locations))")
+    c.execute("SELECT setval('skill_categories_id_seq', (SELECT MAX(id) FROM skill_categories))")
+    c.execute("SELECT setval('skills_id_seq', (SELECT MAX(id) FROM skills))")
+    c.execute("SELECT setval('jobs_id_seq', (SELECT MAX(id) FROM jobs))")
 
     # job_locations links
     c.execute("INSERT INTO job_locations (job_id, location_id) VALUES (1, 1)")  # Job1 -> New York
@@ -70,29 +80,59 @@ def _seed_database(conn):
 
 
 @pytest.fixture
-def db_path(tmp_path):
-    """Create a fresh SQLite database from schema.sql and seed it with test data."""
-    db_file = tmp_path / "test.db"
-    conn = sqlite3.connect(str(db_file))
+def db_url():
+    """Create a fresh PostgreSQL test database from schema.sql and seed it with test data.
+
+    Uses the market_analyzer_test database. Drops and recreates all tables each run.
+    """
+    conn = psycopg2.connect(TEST_DB_URL)
+    conn.autocommit = True
+    c = conn.cursor()
+
+    # Drop all tables to start fresh
+    c.execute("""
+        DO $$ DECLARE
+            r RECORD;
+        BEGIN
+            FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
+                EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+            END LOOP;
+        END $$;
+    """)
+    conn.close()
+
+    # Reconnect without autocommit to run schema + seed
+    conn = psycopg2.connect(TEST_DB_URL)
+    c = conn.cursor()
     with open(SCHEMA_PATH) as f:
-        conn.executescript(f.read())
+        c.execute(f.read())
+    conn.commit()
+
     _seed_database(conn)
     conn.close()
-    return str(db_file)
+
+    return TEST_DB_URL
+
+
+# Keep db_path as an alias so existing tests work without changes
+@pytest.fixture
+def db_path(db_url):
+    """Alias for db_url for backward compatibility."""
+    return db_url
 
 
 @pytest.fixture
-def skill_recommender(db_path):
+def skill_recommender(db_url):
     """Return a SkillRecommender backed by the test database."""
     from market_analyzer.skill_recommender import SkillRecommender
-    return SkillRecommender(db_path)
+    return SkillRecommender(db_url)
 
 
 @pytest.fixture
-def location_recommender(db_path):
+def location_recommender(db_url):
     """Return a LocationSkillRecommender backed by the test database."""
     from market_analyzer.location_recommender import LocationSkillRecommender
-    return LocationSkillRecommender(db_path)
+    return LocationSkillRecommender(db_url)
 
 
 @pytest.fixture
@@ -106,16 +146,14 @@ def mock_taxonomy():
 
 
 @pytest.fixture
-def test_client(db_path, monkeypatch):
+def test_client(db_url, monkeypatch):
     """Patch server globals and return a FastAPI TestClient."""
     from market_analyzer.skill_recommender import SkillRecommender
     from market_analyzer.location_recommender import LocationSkillRecommender
     from market_analyzer import server
     from starlette.testclient import TestClient
-    from pathlib import Path
 
-    monkeypatch.setattr(server, "skill_brain", SkillRecommender(db_path))
-    monkeypatch.setattr(server, "location_brain", LocationSkillRecommender(db_path))
-    monkeypatch.setattr(server, "DB_PATH", db_path)
-    monkeypatch.setattr(server, "db_file", Path(db_path))
+    monkeypatch.setattr(server, "skill_brain", SkillRecommender(db_url))
+    monkeypatch.setattr(server, "location_brain", LocationSkillRecommender(db_url))
+    monkeypatch.setattr(server, "DB_URL", db_url)
     return TestClient(server.app)

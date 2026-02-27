@@ -1,26 +1,32 @@
 #!/usr/bin/env python3
 """
-Migration script: Convert processed_jobs.csv to SQLite database
+Migration script: Convert processed_jobs.csv to PostgreSQL database
 Normalizes data into the new schema structure
 """
 
-import sqlite3
 import csv
 import json
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Tuple, List, Optional
 
+import psycopg2
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
+
+# Allow importing db_config when run as a script
+sys.path.insert(0, str(ROOT_DIR / "src"))
+from market_analyzer.db_config import DATABASE_URL
 
 
 class DatabaseMigrator:
-    def __init__(self, db_path: str = None, csv_path: str = None):
-        if db_path is None:
-            db_path = str(ROOT_DIR / "data" / "market_analyzer.db")
+    def __init__(self, db_url: str = None, csv_path: str = None):
+        if db_url is None:
+            db_url = DATABASE_URL
         if csv_path is None:
             csv_path = str(ROOT_DIR / "data" / "processed_jobs.csv")
-        self.db_path = db_path
+        self.db_url = db_url
         self.csv_path = csv_path
         self.conn = None
         self.cursor = None
@@ -45,10 +51,10 @@ class DatabaseMigrator:
         }
 
     def connect(self):
-        """Connect to SQLite database and initialize schema"""
-        self.conn = sqlite3.connect(self.db_path)
+        """Connect to PostgreSQL database and initialize schema"""
+        self.conn = psycopg2.connect(self.db_url)
         self.cursor = self.conn.cursor()
-        print(f"✓ Connected to {self.db_path}")
+        print(f"✓ Connected to PostgreSQL")
 
     def initialize_schema(self):
         """Create tables from schema.sql"""
@@ -59,7 +65,7 @@ class DatabaseMigrator:
         with open(schema_path, "r") as f:
             schema = f.read()
 
-        self.cursor.executescript(schema)
+        self.cursor.execute(schema)
         self.conn.commit()
         print("✓ Database schema initialized")
 
@@ -69,7 +75,7 @@ class DatabaseMigrator:
             return self.skill_category_cache[category_name]
 
         self.cursor.execute(
-            "SELECT id FROM skill_categories WHERE name = ?",
+            "SELECT id FROM skill_categories WHERE name = %s",
             (category_name,)
         )
         result = self.cursor.fetchone()
@@ -78,10 +84,10 @@ class DatabaseMigrator:
             category_id = result[0]
         else:
             self.cursor.execute(
-                "INSERT INTO skill_categories (name) VALUES (?)",
+                "INSERT INTO skill_categories (name) VALUES (%s) RETURNING id",
                 (category_name,)
             )
-            category_id = self.cursor.lastrowid
+            category_id = self.cursor.fetchone()[0]
             self.stats["skills_created"] += 1
 
         self.skill_category_cache[category_name] = category_id
@@ -101,7 +107,7 @@ class DatabaseMigrator:
         category_id = self.get_or_create_skill_category(category_name)
 
         self.cursor.execute(
-            "SELECT id FROM skills WHERE name = ? AND category_id = ?",
+            "SELECT id FROM skills WHERE name = %s AND category_id = %s",
             (skill_name, category_id)
         )
         result = self.cursor.fetchone()
@@ -110,27 +116,27 @@ class DatabaseMigrator:
             skill_id = result[0]
         else:
             self.cursor.execute(
-                "INSERT INTO skills (name, category_id) VALUES (?, ?)",
+                "INSERT INTO skills (name, category_id) VALUES (%s, %s) RETURNING id",
                 (skill_name, category_id)
             )
-            skill_id = self.cursor.lastrowid
+            skill_id = self.cursor.fetchone()[0]
 
         self.skill_cache[key] = skill_id
         return skill_id
 
     def get_or_create_company(self, company_data: Dict) -> int:
         """Get or create company and return ID"""
-        muse_id = str(company_data.get("company.id", ""))
+        company_name = company_data.get("company.name", "Unknown")
 
-        if not muse_id or muse_id == "":
+        if not company_name or company_name == "Unknown":
             return None
 
-        if muse_id in self.company_cache:
-            return self.company_cache[muse_id]
+        if company_name in self.company_cache:
+            return self.company_cache[company_name]
 
         self.cursor.execute(
-            "SELECT id FROM companies WHERE muse_company_id = ?",
-            (muse_id,)
+            "SELECT id FROM companies WHERE name = %s",
+            (company_name,)
         )
         result = self.cursor.fetchone()
 
@@ -138,17 +144,16 @@ class DatabaseMigrator:
             company_id = result[0]
         else:
             self.cursor.execute(
-                "INSERT INTO companies (muse_company_id, name, short_name) VALUES (?, ?, ?)",
+                "INSERT INTO companies (name, short_name) VALUES (%s, %s) RETURNING id",
                 (
-                    muse_id,
-                    company_data.get("company.name", "Unknown"),
+                    company_name,
                     company_data.get("company.short_name", "")
                 )
             )
-            company_id = self.cursor.lastrowid
+            company_id = self.cursor.fetchone()[0]
             self.stats["companies_created"] += 1
 
-        self.company_cache[muse_id] = company_id
+        self.company_cache[company_name] = company_id
         return company_id
 
     def get_or_create_location(self, job_city: List[str], is_remote: bool) -> int:
@@ -166,13 +171,13 @@ class DatabaseMigrator:
                 city = parts[0].strip()
                 state = parts[1].strip() if len(parts) > 1 else None
 
-        location_key = (city, state, "USA", is_remote)
+        location_key = (city, state, "USA")
 
         if location_key in self.location_cache:
             return self.location_cache[location_key]
 
         self.cursor.execute(
-            "SELECT id FROM locations WHERE city = ? AND state = ? AND country = ? AND is_remote = ?",
+            "SELECT id FROM locations WHERE city = %s AND state = %s AND country = %s",
             location_key
         )
         result = self.cursor.fetchone()
@@ -181,10 +186,10 @@ class DatabaseMigrator:
             location_id = result[0]
         else:
             self.cursor.execute(
-                "INSERT INTO locations (city, state, country, is_remote) VALUES (?, ?, ?, ?)",
+                "INSERT INTO locations (city, state, country) VALUES (%s, %s, %s) RETURNING id",
                 location_key
             )
-            location_id = self.cursor.lastrowid
+            location_id = self.cursor.fetchone()[0]
             self.stats["locations_created"] += 1
 
         self.location_cache[location_key] = location_id
@@ -216,8 +221,8 @@ class DatabaseMigrator:
     def import_job(self, row: Dict) -> bool:
         """Import single job row - UPSERT if exists, INSERT if new"""
         try:
-            muse_job_id = str(row.get("id", ""))
-            if not muse_job_id:
+            external_job_id = str(row.get("id", ""))
+            if not external_job_id:
                 return False
 
             # Get or create company
@@ -232,8 +237,8 @@ class DatabaseMigrator:
             pub_date = row.get("publication_date", "")
             is_remote = row.get("is_remote", "").lower() == "true" or row.get("is_remote") == True
 
-            # Check if job already exists
-            self.cursor.execute("SELECT id FROM jobs WHERE muse_job_id = ?", (muse_job_id,))
+            # Check if job already exists by external ID
+            self.cursor.execute("SELECT id FROM jobs WHERE external_job_id = %s", (external_job_id,))
             existing_job = self.cursor.fetchone()
 
             if existing_job:
@@ -241,24 +246,23 @@ class DatabaseMigrator:
                 job_id = existing_job[0]
                 self.cursor.execute(
                     """UPDATE jobs SET
-                        title = ?, company_id = ?, description = ?, clean_description = ?,
-                        salary_min = ?, salary_max = ?, is_remote = ?, publication_date = ?,
-                        job_url = ?, fetched_at = ?, updated_at = ?, status = 'open', last_seen_at = ?
-                        WHERE muse_job_id = ?""",
+                        title = %s, company_id = %s, description = %s,
+                        salary_min = %s, salary_max = %s, is_remote = %s, publication_date = %s,
+                        job_url = %s, fetched_at = %s, updated_at = %s, status = 'open', last_seen_at = %s
+                        WHERE id = %s""",
                     (
                         row.get("name", ""),
                         company_id,
-                        row.get("contents", ""),
                         row.get("clean_description", ""),
                         salary_min,
                         salary_max,
-                        1 if is_remote else 0,
+                        is_remote,
                         pub_date if pub_date else None,
                         row.get("refs.landing_page", ""),
                         self.run_timestamp,
                         self.run_timestamp,
                         self.run_timestamp,
-                        muse_job_id
+                        job_id
                     )
                 )
                 self.stats["jobs_updated"] += 1
@@ -266,26 +270,26 @@ class DatabaseMigrator:
                 # INSERT: New job
                 self.cursor.execute(
                     """INSERT INTO jobs (
-                        muse_job_id, title, company_id, description, clean_description,
+                        external_job_id, title, company_id, description,
                         salary_min, salary_max, is_remote, publication_date, job_url,
                         fetched_at, last_seen_at, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')""",
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'open')
+                    RETURNING id""",
                     (
-                        muse_job_id,
+                        external_job_id,
                         row.get("name", ""),
                         company_id,
-                        row.get("contents", ""),
                         row.get("clean_description", ""),
                         salary_min,
                         salary_max,
-                        1 if is_remote else 0,
+                        is_remote,
                         pub_date if pub_date else None,
                         row.get("refs.landing_page", ""),
                         self.run_timestamp,
                         self.run_timestamp
                     )
                 )
-                job_id = self.cursor.lastrowid
+                job_id = self.cursor.fetchone()[0]
                 self.stats["jobs_imported"] += 1
 
             # Get or create ALL locations and link them to the job
@@ -304,7 +308,8 @@ class DatabaseMigrator:
                 location_id = self.get_or_create_location([job_city], is_remote)
                 if location_id:
                     self.cursor.execute(
-                        "INSERT OR IGNORE INTO job_locations (job_id, location_id) VALUES (?, ?)",
+                        """INSERT INTO job_locations (job_id, location_id) VALUES (%s, %s)
+                           ON CONFLICT DO NOTHING""",
                         (job_id, location_id)
                     )
 
@@ -323,7 +328,8 @@ class DatabaseMigrator:
                             skill_id = self.get_or_create_skill(skill_name, category)
                             if skill_id:
                                 self.cursor.execute(
-                                    "INSERT OR IGNORE INTO job_skills (job_id, skill_id) VALUES (?, ?)",
+                                    """INSERT INTO job_skills (job_id, skill_id) VALUES (%s, %s)
+                                       ON CONFLICT DO NOTHING""",
                                     (job_id, skill_id)
                                 )
                                 self.stats["job_skills_created"] += 1
@@ -339,8 +345,8 @@ class DatabaseMigrator:
         """Mark jobs as closed if they weren't seen in this run"""
         try:
             self.cursor.execute(
-                """UPDATE jobs SET status = 'closed', updated_at = ?
-                   WHERE status = 'open' AND (last_seen_at IS NULL OR last_seen_at < ?)""",
+                """UPDATE jobs SET status = 'closed', updated_at = %s
+                   WHERE status = 'open' AND (last_seen_at IS NULL OR last_seen_at < %s)""",
                 (self.run_timestamp, self.run_timestamp)
             )
             self.stats["jobs_closed"] = self.cursor.rowcount
@@ -352,7 +358,7 @@ class DatabaseMigrator:
 
     def migrate(self):
         """Run the full migration"""
-        print("\n🚀 Starting migration from CSV to SQLite...\n")
+        print("\n🚀 Starting migration from CSV to PostgreSQL...\n")
 
         self.connect()
         self.initialize_schema()

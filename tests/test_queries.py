@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Test key database queries for the recommendation engine"""
 
-import sqlite3
-from pathlib import Path
+import psycopg2
+from market_analyzer.db_config import DATABASE_URL
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-conn = sqlite3.connect(str(ROOT_DIR / "data" / "market_analyzer.db"))
+conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 
 print("\n" + "="*60)
@@ -20,7 +19,7 @@ cursor.execute("""
     FROM job_skills js
     JOIN skills s ON js.skill_id = s.id
     JOIN skill_categories sc ON s.category_id = sc.id
-    GROUP BY s.id
+    GROUP BY s.id, s.name, sc.name
     ORDER BY job_count DESC
     LIMIT 10
 """)
@@ -35,7 +34,7 @@ cursor.execute("""
     FROM skill_categories sc
     LEFT JOIN skills s ON sc.id = s.category_id
     LEFT JOIN job_skills js ON s.id = js.skill_id
-    GROUP BY sc.id
+    GROUP BY sc.id, sc.name
     ORDER BY jobs_using DESC
 """)
 for category, skills_count, jobs_using in cursor.fetchall():
@@ -52,7 +51,7 @@ cursor.execute("""
     JOIN skills s2 ON js2.skill_id = s2.id
     JOIN skill_categories sc ON s2.category_id = sc.id
     WHERE LOWER(s1.name) = 'react' AND s2.name != s1.name
-    GROUP BY s2.id
+    GROUP BY s2.id, s2.name, sc.name
     ORDER BY frequency DESC
     LIMIT 10
 """)
@@ -68,13 +67,13 @@ print("\n4️⃣  Jobs by Location")
 print("-" * 60)
 cursor.execute("""
     SELECT
-        CASE WHEN l.is_remote = 1 THEN 'Remote' ELSE l.city END as location,
+        l.city as location,
         COUNT(DISTINCT j.id) as job_count,
         COUNT(DISTINCT j.company_id) as company_count
     FROM jobs j
     JOIN job_locations jl ON j.id = jl.job_id
     JOIN locations l ON jl.location_id = l.id
-    GROUP BY l.id
+    GROUP BY l.id, l.city
     ORDER BY job_count DESC
 """)
 for location, job_count, company_count in cursor.fetchall():
@@ -87,7 +86,7 @@ cursor.execute("""
     SELECT c.name, COUNT(j.id) as job_count
     FROM companies c
     JOIN jobs j ON c.id = j.company_id
-    GROUP BY c.id
+    GROUP BY c.id, c.name
     ORDER BY job_count DESC
     LIMIT 10
 """)
@@ -110,9 +109,9 @@ cursor.execute("""
 row = cursor.fetchone()
 if row[0] > 0:
     print(f"  Jobs with salary info:  {row[0]}")
-    print(f"  Average salary range:   ${row[1]:,.0f} - ${row[2]:,.0f}")
-    print(f"  Min salary found:       ${row[3]:,.0f}")
-    print(f"  Max salary found:       ${row[4]:,.0f}")
+    print(f"  Average salary range:   ${float(row[1]):,.0f} - ${float(row[2]):,.0f}")
+    print(f"  Min salary found:       ${float(row[3]):,.0f}")
+    print(f"  Max salary found:       ${float(row[4]):,.0f}")
 else:
     print("  No salary data in database")
 
@@ -130,7 +129,7 @@ cursor.execute("""
     LEFT JOIN job_skills js ON s.id = js.skill_id
     LEFT JOIN jobs j ON js.job_id = j.id
     WHERE LOWER(s.name) = 'python'
-    GROUP BY s.id
+    GROUP BY s.id, s.name, sc.name
 """)
 result = cursor.fetchone()
 if result:
@@ -147,7 +146,7 @@ if result:
         JOIN skills s1 ON js1.skill_id = s1.id
         JOIN skills s2 ON js2.skill_id = s2.id
         WHERE LOWER(s1.name) = 'python' AND s2.name != s1.name
-        GROUP BY s2.id
+        GROUP BY s2.id, s2.name
         ORDER BY frequency DESC
         LIMIT 5
     """)

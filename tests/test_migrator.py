@@ -1,7 +1,6 @@
 """Tests for DatabaseMigrator helpers in scripts/migrate_to_sqlite.py."""
 
 import sys
-import sqlite3
 from pathlib import Path
 import pytest
 
@@ -10,13 +9,13 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from scripts.migrate_to_sqlite import DatabaseMigrator
+from tests.conftest import TEST_DB_URL
 
 
 @pytest.fixture
-def migrator(tmp_path):
-    """Create a DatabaseMigrator with a fresh temp database."""
-    db_file = tmp_path / "mig_test.db"
-    m = DatabaseMigrator(db_path=str(db_file), csv_path="/dev/null")
+def migrator():
+    """Create a DatabaseMigrator with the test database."""
+    m = DatabaseMigrator(db_url=TEST_DB_URL, csv_path="/dev/null")
     m.connect()
     m.initialize_schema()
     return m
@@ -103,12 +102,11 @@ class TestGetOrCreate:
 class TestImportJob:
     def _make_row(self, **overrides):
         row = {
-            "id": "J999",
+            "id": "EXT-999",
             "name": "Test Job",
             "company.id": "C999",
             "company.name": "TestCo",
             "company.short_name": "tc",
-            "contents": "Job description",
             "clean_description": "Job description",
             "salary": "$80,000 - $100,000",
             "is_remote": "false",
@@ -124,7 +122,7 @@ class TestImportJob:
         assert migrator.import_job(self._make_row()) is True
         assert migrator.stats["jobs_imported"] == 1
 
-    def test_missing_id_returns_false(self, migrator):
+    def test_missing_external_id_returns_false(self, migrator):
         assert migrator.import_job(self._make_row(id="")) is False
 
     def test_upsert_existing_job(self, migrator):
@@ -134,7 +132,7 @@ class TestImportJob:
         assert migrator.stats["jobs_updated"] >= 1
 
     def test_tracks_errors(self, migrator):
-        row = self._make_row(**{"company.id": ""})
+        row = self._make_row(**{"company.name": ""})
         migrator.import_job(row)
         # Missing company should not count as imported
         assert migrator.stats["jobs_imported"] == 0

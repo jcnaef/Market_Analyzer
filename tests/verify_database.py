@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Verify SQLite database contents"""
+"""Verify PostgreSQL database contents"""
 
-import sqlite3
-from pathlib import Path
+import psycopg2
+from market_analyzer.db_config import DATABASE_URL
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
-conn = sqlite3.connect(str(ROOT_DIR / "data" / "market_analyzer.db"))
+conn = psycopg2.connect(DATABASE_URL)
 cursor = conn.cursor()
 
 print("\n📊 Database Verification\n")
@@ -27,7 +26,7 @@ for row in cursor.fetchall():
     print(f"  {row}")
 
 print("\n📌 Sample Locations:")
-cursor.execute("SELECT id, city, state, is_remote FROM locations LIMIT 5")
+cursor.execute("SELECT id, city, state FROM locations LIMIT 5")
 for row in cursor.fetchall():
     print(f"  {row}")
 
@@ -45,7 +44,7 @@ cursor.execute("""
     SELECT j.id, j.title, j.company_id, COUNT(js.skill_id) as skill_count
     FROM jobs j
     LEFT JOIN job_skills js ON j.id = js.job_id
-    GROUP BY j.id
+    GROUP BY j.id, j.title, j.company_id
     LIMIT 1
 """)
 job = cursor.fetchone()
@@ -54,7 +53,7 @@ if job:
     cursor.execute("""
         SELECT s.name FROM job_skills js
         JOIN skills s ON js.skill_id = s.id
-        WHERE js.job_id = ?
+        WHERE js.job_id = %s
     """, (job[0],))
     print(f"  Skills: {', '.join([row[0] for row in cursor.fetchall()])}")
 
