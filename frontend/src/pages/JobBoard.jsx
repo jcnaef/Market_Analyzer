@@ -141,11 +141,16 @@ export default function JobBoard() {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">{job.title}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{job.company}</p>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    {job.locations.map((loc) => (
+                    {job.locations.slice(0, 7).map((loc) => (
                       <span key={loc} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                         {loc}
                       </span>
                     ))}
+                    {job.locations.length > 7 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" title={job.locations.slice(7).join(', ')}>
+                        +{job.locations.length - 7} more...
+                      </span>
+                    )}
                     {job.is_remote && (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
                         Remote
@@ -167,7 +172,7 @@ export default function JobBoard() {
                       <SkillBadge key={s.name} name={s.name} category={s.category} />
                     ))}
                     {job.skills.length > 8 && (
-                      <span className="text-xs text-gray-400">+{job.skills.length - 8} more</span>
+                      <span className="text-xs text-gray-400" title={job.skills.slice(8).map(s => s.name).join(', ')}>+{job.skills.length - 8} more</span>
                     )}
                   </div>
                 </div>

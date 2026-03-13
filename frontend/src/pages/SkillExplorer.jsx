@@ -108,9 +108,15 @@ export default function SkillExplorer() {
                   <YAxis dataKey="name" type="category" tick={{ fill: "#6b7280", fontSize: 12 }} width={75} />
                   <Tooltip
                     formatter={(v) => [`${v}%`, "Correlation"]}
-                    contentStyle={{ backgroundColor: "#1f2937", border: "none", borderRadius: 8, color: "#f9fafb" }}
+                    contentStyle={{ 
+			    backgroundColor: "#1f2937",
+				    border: "none",
+				    borderRadius: 8,
+		    }}
+		    labelStyle = {{ color: "#ffffff"}}
                   />
-                  <Bar dataKey="correlation" radius={[0, 4, 4, 0]}>
+
+                  <Bar dataKey="correlation" fill="#818cf8" radius={[0, 4, 4, 0]}>
                     {skillChartData.map((_, i) => (
                       <Cell key={i} fill={i === 0 ? "#6366f1" : "#818cf8"} />
                     ))}

@@ -133,8 +133,14 @@ def save_to_file(data, filename="muse_jobs.json"):
         json.dump(data, f, indent=4)
         print(f"Successfully saved {len(data)} jobs to {filepath}")
 
-def get_google_jobs(query="software developer", location="Austin, Texas, United States"):
-    """Fetch jobs from SerpAPI Google Jobs engine. Returns raw list of job dicts."""
+def get_google_jobs(query="software developer", location="Austin, Texas, United States", num_pages=1):
+    """Fetch jobs from SerpAPI Google Jobs engine. Returns raw list of job dicts.
+
+    Args:
+        query: Search query string.
+        location: Location string for the search.
+        num_pages: Number of result pages to fetch (default=1, ~10 results per page).
+    """
     load_dotenv()
     api_key = os.getenv("SERP_KEY")
     if not api_key:
@@ -150,11 +156,29 @@ def get_google_jobs(query="software developer", location="Austin, Texas, United 
         "api_key": api_key,
     }
 
-    search = GoogleSearch(params)
-    results = search.get_dict()
-    jobs = results.get("jobs_results", [])
-    print(f"Fetched {len(jobs)} jobs from Google Jobs for '{query}' in {location}")
-    return jobs
+    all_jobs = []
+
+    for page in range(num_pages):
+        search = GoogleSearch(params)
+        results = search.get_dict()
+        page_jobs = results.get("jobs_results", [])
+        all_jobs.extend(page_jobs)
+        print(f"  Page {page + 1}/{num_pages}: fetched {len(page_jobs)} jobs")
+
+        if not page_jobs:
+            break
+
+        next_token = results.get("serpapi_pagination", {}).get("next_page_token")
+        if not next_token:
+            break
+
+        params["next_page_token"] = next_token
+
+        if page < num_pages - 1:
+            time.sleep(1)
+
+    print(f"Fetched {len(all_jobs)} total jobs from Google Jobs for '{query}' in {location}")
+    return all_jobs
 
 
 def _parse_relative_date(posted_at):
@@ -194,7 +218,14 @@ def _parse_google_salary(salary_str):
         return None, None
 
     salary_str = salary_str.lower().strip()
-    is_hourly = "hour" in salary_str
+    # Only trigger hourly if it clearly says "an hour", "/hr", etc.
+    is_hourly = bool(re.search(r'(\ban?\s+hour\b|/hr|/h\b|hourly)', salary_str))
+    
+    # Check if it explicitly says "year" to prevent double-counting
+    is_yearly = bool(re.search(r'(\byear\b|/yr|annually|annual)', salary_str))
+    
+    # If it has both, or just "year", do NOT multiply
+    should_multiply = is_hourly and not is_yearly
 
     # Find all dollar amounts
     amounts = re.findall(r"\$[\d,\.]+k?", salary_str)
@@ -204,10 +235,17 @@ def _parse_google_salary(salary_str):
     parsed = []
     for amt in amounts:
         num_str = amt.replace("$", "").replace(",", "")
-        if num_str.endswith("k"):
-            parsed.append(float(num_str[:-1]) * 1000)
-        else:
-            parsed.append(float(num_str))
+        num_str = num_str.rstrip('.')
+        if not num_str:
+            continue
+        try:
+            if num_str.endswith("k"):
+                parsed.append(float(num_str[:-1]) * 1000)
+            else:
+                parsed.append(float(num_str))
+        except ValueError:
+            print(f"Warning: Could not parse numeric part '{num_str}' from amount '{amt}'")
+            continue
 
     # Convert hourly to yearly (2080 work hours/year)
     if is_hourly:
@@ -358,6 +396,10 @@ def save_google_jobs_to_db(jobs, db_url=None):
             # Salary
             salary_min, salary_max = _parse_google_salary(ext.get("salary"))
 
+            # Apply URL (first link from apply_options)
+            apply_options = job.get("apply_options", [])
+            job_url = apply_options[0].get("link") if apply_options else None
+
             # Remote detection
             schedule = ext.get("schedule_type", "")
             is_remote = "remote" in location_str.lower() or "remote" in (schedule or "").lower()
@@ -380,11 +422,11 @@ def save_google_jobs_to_db(jobs, db_url=None):
                         title = %s, company_id = %s, description = %s,
                         salary_min = %s, salary_max = %s, is_remote = %s,
                         publication_date = %s, fetched_at = %s, updated_at = %s,
-                        status = 'open', last_seen_at = %s
+                        status = 'open', last_seen_at = %s, job_url = %s
                     WHERE id = %s""",
                     (title, company_id, cleaned, salary_min, salary_max,
                      is_remote, pub_date, run_timestamp, run_timestamp,
-                     run_timestamp, job_id),
+                     run_timestamp, job_url, job_id),
                 )
                 stats["jobs_updated"] += 1
             else:
@@ -392,12 +434,12 @@ def save_google_jobs_to_db(jobs, db_url=None):
                     """INSERT INTO jobs (
                         external_job_id, title, company_id, description,
                         salary_min, salary_max, is_remote, publication_date,
-                        fetched_at, last_seen_at, status
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'open')
+                        fetched_at, last_seen_at, status, job_url
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'open', %s)
                     RETURNING id""",
                     (external_id, title, company_id, cleaned, salary_min,
                      salary_max, is_remote, pub_date, run_timestamp,
-                     run_timestamp),
+                     run_timestamp, job_url),
                 )
                 job_id = cursor.fetchone()[0]
                 stats["jobs_imported"] += 1
