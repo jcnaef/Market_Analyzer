@@ -3,7 +3,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
@@ -18,14 +17,14 @@ function CustomTooltip({ active, payload }) {
   const d = payload[0]?.payload;
   if (!d) return null;
   return (
-    <div className="bg-gray-900 text-gray-100 rounded-lg px-4 py-3 shadow-lg text-sm space-y-1">
-      <p className="font-semibold text-white">{d.name}</p>
-      <p>Max Salary: {formatSalary(d.max_salary)}</p>
-      <p>Avg + 1 SD: {formatSalary(d.avg_mid + d.std_dev)}</p>
-      <p>Mean: {formatSalary(d.avg_mid)}</p>
-      <p>Avg - 1 SD: {formatSalary(d.avg_mid - d.std_dev)}</p>
-      <p>Min Salary: {formatSalary(d.min_salary)}</p>
-      <p className="text-gray-400 pt-1">{d.job_count} jobs</p>
+    <div className="bg-[#09090b] border border-white/10 rounded-md px-3 py-2.5 text-xs space-y-1">
+      <p className="font-medium text-zinc-100">{d.name}</p>
+      <p className="text-zinc-400">Max Salary: {formatSalary(d.max_salary)}</p>
+      <p className="text-zinc-400">Avg + 1 SD: {formatSalary(d.avg_mid + d.std_dev)}</p>
+      <p className="text-zinc-400">Mean: {formatSalary(d.avg_mid)}</p>
+      <p className="text-zinc-400">Avg - 1 SD: {formatSalary(d.avg_mid - d.std_dev)}</p>
+      <p className="text-zinc-400">Min Salary: {formatSalary(d.min_salary)}</p>
+      <p className="text-zinc-500 pt-1">{d.job_count} jobs</p>
     </div>
   );
 }
@@ -41,9 +40,6 @@ function HorizontalBoxPlotShape(props) {
   const range = domainMax - domainMin;
   if (range === 0) return null;
 
-  // For a horizontal bar layout={vertical} with numeric XAxis:
-  // x = left edge of bar (plot area left), width = pixel width of bar value
-  // But we set _boxRange to span the full domain, so x = plot left, width = full plot width
   const toX = (val) => {
     const ratio = (val - domainMin) / range;
     return x + ratio * width;
@@ -66,8 +62,8 @@ function HorizontalBoxPlotShape(props) {
         y1={cy}
         x2={boxLeft}
         y2={cy}
-        stroke="#6366f1"
-        strokeWidth={2}
+        stroke="#52525b"
+        strokeWidth={1}
       />
       {/* Left whisker cap */}
       <line
@@ -75,8 +71,8 @@ function HorizontalBoxPlotShape(props) {
         y1={cy - capH / 2}
         x2={whiskerLeft}
         y2={cy + capH / 2}
-        stroke="#6366f1"
-        strokeWidth={2}
+        stroke="#52525b"
+        strokeWidth={1}
       />
       {/* Box */}
       <rect
@@ -84,11 +80,11 @@ function HorizontalBoxPlotShape(props) {
         y={y + height * 0.1}
         width={Math.max(boxWidth, 1)}
         height={height * 0.8}
-        fill="#818cf8"
-        fillOpacity={0.6}
+        fill="#6366f1"
+        fillOpacity={0.15}
         stroke="#6366f1"
-        strokeWidth={2}
-        rx={3}
+        strokeWidth={1}
+        rx={2}
       />
       {/* Mean line */}
       <line
@@ -96,8 +92,8 @@ function HorizontalBoxPlotShape(props) {
         y1={y + height * 0.1}
         x2={meanX}
         y2={y + height * 0.9}
-        stroke="#4f46e5"
-        strokeWidth={3}
+        stroke="#6366f1"
+        strokeWidth={2}
       />
       {/* Right whisker line */}
       <line
@@ -105,8 +101,8 @@ function HorizontalBoxPlotShape(props) {
         y1={cy}
         x2={whiskerRight}
         y2={cy}
-        stroke="#6366f1"
-        strokeWidth={2}
+        stroke="#52525b"
+        strokeWidth={1}
       />
       {/* Right whisker cap */}
       <line
@@ -114,8 +110,8 @@ function HorizontalBoxPlotShape(props) {
         y1={cy - capH / 2}
         x2={whiskerRight}
         y2={cy + capH / 2}
-        stroke="#6366f1"
-        strokeWidth={2}
+        stroke="#52525b"
+        strokeWidth={1}
       />
     </g>
   );
@@ -152,19 +148,22 @@ export default function BoxPlotChart({ data }) {
           layout="vertical"
           margin={{ left: 20, right: 30, top: 10, bottom: 10 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
           <YAxis
             dataKey="name"
             type="category"
-            tick={{ fill: "#6b7280", fontSize: 13 }}
+            tick={{ fill: "#71717a", fontSize: 13 }}
             width={140}
             interval={0}
+            axisLine={false}
+            tickLine={false}
           />
           <XAxis
             type="number"
             domain={[domainMin, domainMax]}
-            tick={{ fill: "#6b7280", fontSize: 12 }}
+            tick={{ fill: "#71717a", fontSize: 12 }}
             tickFormatter={(v) => `$${Math.round(v / 1000)}K`}
+            axisLine={false}
+            tickLine={false}
           />
           <Tooltip content={<CustomTooltip />} />
           <Bar

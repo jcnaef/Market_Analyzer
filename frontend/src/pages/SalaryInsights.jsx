@@ -54,7 +54,6 @@ export default function SalaryInsights() {
 
   const handleAdd = (item) => {
     let next = [...selected, item];
-    // If over the limit, drop the oldest entries to make room
     if (next.length > MAX_SELECTED) {
       next = next.slice(next.length - MAX_SELECTED);
     }
@@ -76,8 +75,8 @@ export default function SalaryInsights() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Salary Insights</h1>
+    <div className="space-y-5">
+      <h1 className="text-2xl font-medium tracking-tight text-zinc-100">Salary Insights</h1>
 
       {/* Toggle tabs */}
       <div className="flex gap-2">
@@ -85,10 +84,10 @@ export default function SalaryInsights() {
           <button
             key={t.key}
             onClick={() => switchTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
               groupBy === t.key
-                ? "bg-indigo-600 text-white"
-                : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+                ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                : "bg-zinc-900 text-zinc-400 border border-white/10 hover:bg-white/5"
             }`}
           >
             {t.label}
@@ -112,54 +111,54 @@ export default function SalaryInsights() {
       ) : error ? (
         <ErrorMessage message={error} onRetry={() => load(selected)} />
       ) : selected.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-12 text-zinc-500 text-sm">
           Search and select {groupBy === "location" ? "locations" : "skills"} above to compare salary distributions.
         </div>
       ) : data.length === 0 ? (
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <div className="text-center py-12 text-zinc-500 text-sm">
           No salary data available for the selected {groupBy === "location" ? "locations" : "skills"}.
         </div>
       ) : (
         <>
           {/* Box Plot Chart */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 className="text-lg font-semibold mb-4">
+          <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+            <h2 className="text-sm font-medium text-zinc-100 mb-4">
               Salary Distribution {tabs.find((t) => t.key === groupBy)?.label}
             </h2>
             <BoxPlotChart data={data} />
-            <p className="text-xs text-gray-400 mt-3">
+            <p className="text-xs text-zinc-500 mt-3">
               Box = mean &plusmn; 1 std dev &middot; Line = mean &middot; Whiskers = min/max
             </p>
           </div>
 
           {/* Data table */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="bg-zinc-900 rounded-md border border-white/10 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-                  <th className="text-left px-6 py-3 font-medium text-gray-600 dark:text-gray-400">
+                <tr className="border-b border-white/10">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-zinc-500">
                     {groupBy === "location" ? "Location" : "Skill"}
                   </th>
-                  <th className="text-right px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Min</th>
-                  <th className="text-right px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Avg Min</th>
-                  <th className="text-right px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Mean</th>
-                  <th className="text-right px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Avg Max</th>
-                  <th className="text-right px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Max</th>
-                  <th className="text-right px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Std Dev</th>
-                  <th className="text-right px-6 py-3 font-medium text-gray-600 dark:text-gray-400">Jobs</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Min</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Avg Min</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Mean</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Avg Max</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Max</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Std Dev</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-zinc-500">Jobs</th>
                 </tr>
               </thead>
               <tbody>
                 {data.map((row) => (
-                  <tr key={row.name} className="border-b border-gray-100 dark:border-gray-800 last:border-0">
-                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-white">{row.name}</td>
-                    <td className="px-6 py-3 text-right text-gray-600 dark:text-gray-400">{formatSalary(row.min_salary)}</td>
-                    <td className="px-6 py-3 text-right text-gray-600 dark:text-gray-400">{formatSalary(row.avg_min)}</td>
-                    <td className="px-6 py-3 text-right text-gray-600 dark:text-gray-400">{formatSalary(row.avg_mid)}</td>
-                    <td className="px-6 py-3 text-right text-gray-600 dark:text-gray-400">{formatSalary(row.avg_max)}</td>
-                    <td className="px-6 py-3 text-right text-gray-600 dark:text-gray-400">{formatSalary(row.max_salary)}</td>
-                    <td className="px-6 py-3 text-right text-gray-600 dark:text-gray-400">{formatSalary(row.std_dev)}</td>
-                    <td className="px-6 py-3 text-right text-gray-600 dark:text-gray-400">{row.job_count}</td>
+                  <tr key={row.name} className="border-b border-white/5 last:border-0">
+                    <td className="px-4 py-3 font-medium text-zinc-100">{row.name}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400">{formatSalary(row.min_salary)}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400">{formatSalary(row.avg_min)}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400">{formatSalary(row.avg_mid)}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400">{formatSalary(row.avg_max)}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400">{formatSalary(row.max_salary)}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400">{formatSalary(row.std_dev)}</td>
+                    <td className="px-4 py-3 text-right text-zinc-400">{row.job_count}</td>
                   </tr>
                 ))}
               </tbody>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area, Legend,
 } from "recharts";
 import { getDashboardStats } from "../api";
@@ -10,10 +10,16 @@ import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
 const CATEGORY_COLORS = {
-  Languages: "#3b82f6",
-  Frameworks_Libs: "#8b5cf6",
-  Tools_Infrastructure: "#10b981",
-  Concepts: "#f59e0b",
+  Languages: "#6366f1",
+  Frameworks_Libs: "#3f3f46",
+  Tools_Infrastructure: "#3f3f46",
+  Concepts: "#3f3f46",
+};
+
+const DARK_TOOLTIP = {
+  contentStyle: { backgroundColor: "#09090b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6 },
+  itemStyle: { color: "#e4e4e7" },
+  labelStyle: { color: "#e4e4e7" },
 };
 
 function formatSalary(val) {
@@ -50,12 +56,12 @@ export default function Dashboard() {
 
   const remoteData = [
     { name: "Remote", value: stats.remote_count, fill: "#6366f1" },
-    { name: "Onsite", value: stats.onsite_count, fill: "#e5e7eb" },
+    { name: "Onsite", value: stats.onsite_count, fill: "#3f3f46" },
   ];
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+    <div className="space-y-5">
+      <h1 className="text-2xl font-medium tracking-tight text-zinc-100">Dashboard</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -66,22 +72,17 @@ export default function Dashboard() {
       </div>
 
       {/* Top Skills */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-        <h2 className="text-lg font-semibold mb-4">Top Technical Skills</h2>
+      <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+        <h2 className="text-sm font-medium text-zinc-100 mb-4">Top Technical Skills</h2>
         {skillChartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={skillChartData} layout="vertical" margin={{ left: 80 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 12 }} />
-              <YAxis dataKey="name" type="category" tick={{ fill: "#6b7280", fontSize: 12 }} width={75} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "#1f2937", border: "none", borderRadius: 8 }}
-                itemStyle={{ color: "#f9fafb" }}
-                labelStyle={{ color: "#f9fafb" }}
-              />
+              <XAxis type="number" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={75} axisLine={false} tickLine={false} />
+              <Tooltip {...DARK_TOOLTIP} />
               <Bar
                 dataKey="count"
-                radius={[0, 4, 4, 0]}
+                radius={[0, 3, 3, 0]}
                 cursor="pointer"
                 onClick={(data) => navigate(`/jobs?skill=${encodeURIComponent(data.name)}`)}
               >
@@ -92,67 +93,66 @@ export default function Dashboard() {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-8">No skill data available</p>
+          <p className="text-zinc-500 text-center py-8">No skill data available</p>
         )}
       </div>
 
       {/* Charts row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Remote vs Onsite */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold mb-4">Remote vs Onsite</h2>
+        <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+          <h2 className="text-sm font-medium text-zinc-100 mb-4">Remote vs Onsite</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={remoteData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+              <Pie data={remoteData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={{ stroke: "#71717a" }} stroke="rgba(255,255,255,0.1)">
                 {remoteData.map((entry, i) => (
                   <Cell key={i} fill={entry.fill} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "none", borderRadius: 8 }} itemStyle={{ color: "#f9fafb" }} labelStyle={{ color: "#f9fafb" }} />
-              <Legend />
+              <Tooltip {...DARK_TOOLTIP} />
+              <Legend wrapperStyle={{ color: "#a1a1aa", fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         {/* Monthly Trends */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold mb-4">Monthly Posting Trends</h2>
+        <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+          <h2 className="text-sm font-medium text-zinc-100 mb-4">Monthly Posting Trends</h2>
           {stats.monthly_trends.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={stats.monthly_trends}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" tick={{ fill: "#6b7280", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} />
-                <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "none", borderRadius: 8 }} itemStyle={{ color: "#f9fafb" }} labelStyle={{ color: "#f9fafb" }} />
-                <Area type="monotone" dataKey="count" stroke="#6366f1" fill="#6366f180" />
+                <XAxis dataKey="month" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip {...DARK_TOOLTIP} />
+                <Area type="monotone" dataKey="count" stroke="#6366f1" fill="#6366f120" />
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No trend data available</p>
+            <p className="text-zinc-500 text-center py-8">No trend data available</p>
           )}
         </div>
       </div>
 
       {/* Salary Overview */}
       {stats.salary_overview.avg_min && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold mb-4">Salary Overview</h2>
+        <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+          <h2 className="text-sm font-medium text-zinc-100 mb-4">Salary Overview</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Min Salary</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{formatSalary(stats.salary_overview.min_salary)}</p>
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Min Salary</p>
+              <p className="mt-1 text-2xl font-medium tracking-tight text-zinc-100">{formatSalary(stats.salary_overview.min_salary)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Avg Min</p>
-              <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{formatSalary(stats.salary_overview.avg_min)}</p>
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Avg Min</p>
+              <p className="mt-1 text-2xl font-medium tracking-tight text-indigo-400">{formatSalary(stats.salary_overview.avg_min)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Avg Max</p>
-              <p className="text-xl font-bold text-indigo-600 dark:text-indigo-400">{formatSalary(stats.salary_overview.avg_max)}</p>
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Avg Max</p>
+              <p className="mt-1 text-2xl font-medium tracking-tight text-indigo-400">{formatSalary(stats.salary_overview.avg_max)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Max Salary</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{formatSalary(stats.salary_overview.max_salary)}</p>
+              <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Max Salary</p>
+              <p className="mt-1 text-2xl font-medium tracking-tight text-zinc-100">{formatSalary(stats.salary_overview.max_salary)}</p>
             </div>
           </div>
         </div>

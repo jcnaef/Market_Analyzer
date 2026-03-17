@@ -1,233 +1,266 @@
-import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { analyzeResume } from "../api";
+import { analyzeResume, analyzeSkillGap, getSkillAutocomplete } from "../api";
 import { useResumeContext } from "../context/ResumeContext";
+import AutocompleteInput from "../components/AutocompleteInput";
 import SkillBadge from "../components/SkillBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
 
-export default function ResumeAnalyzer() {
-  const navigate = useNavigate();
-  const { resumeResults, setResumeResults, clearResume } = useResumeContext();
-  const fileInputRef = useRef(null);
-  const [file, setFile] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [results, setResults] = useState(resumeResults);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+const DARK_TOOLTIP = {
+  contentStyle: { backgroundColor: "#09090b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6 },
+  itemStyle: { color: "#e4e4e7" },
+  labelStyle: { color: "#e4e4e7" },
+};
 
+export default function ResumeAnalyzer() {
+  const location = useLocation();
+  const { resumeResults, setResumeResults, clearResume, resumeSkills } = useResumeContext();
+  const fileInputRef = useRef(null);
+
+  // Upload state
+  const [file, setFile] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+
+  // Manual skill gap state
+  const [knownSkills, setKnownSkills] = useState([]);
+  const [skillInput, setSkillInput] = useState("");
+  const [gapResults, setGapResults] = useState(null);
+  const [gapLoading, setGapLoading] = useState(false);
+  const [gapError, setGapError] = useState(null);
+
+  // Pre-fill skills from navigation state or cached resume
+  useEffect(() => {
+    if (location.state?.skills) {
+      setKnownSkills(location.state.skills);
+    } else if (resumeSkills.length > 0) {
+      setKnownSkills(resumeSkills);
+    }
+  }, [location.state, resumeSkills]);
+
+  // --- Upload handlers ---
   const handleFile = (f) => {
     if (!f) return;
     const ext = f.name.split(".").pop().toLowerCase();
     if (!["pdf", "docx"].includes(ext)) {
-      setError("Only PDF and DOCX files are supported.");
+      setUploadError("Only PDF and DOCX files are supported.");
       return;
     }
     setFile(f);
-    setError(null);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragActive(false);
-    handleFile(e.dataTransfer.files[0]);
+    setUploadError(null);
   };
 
   const upload = () => {
     if (!file) return;
-    setLoading(true);
-    setError(null);
+    setUploadLoading(true);
+    setUploadError(null);
     analyzeResume(file)
-      .then((data) => { setResults(data); setResumeResults(data); })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        setResumeResults(data);
+        // Auto-populate skills from resume
+        const skills = data.extracted_skills
+          .filter((s) => s.demand > 0)
+          .map((s) => s.name);
+        setKnownSkills(skills);
+        setFile(null);
+      })
+      .catch((e) => setUploadError(e.message))
+      .finally(() => setUploadLoading(false));
   };
 
-  const goToSkillGap = () => {
-    if (!results) return;
-    const skills = results.extracted_skills
-      .filter((s) => s.demand > 0)
-      .map((s) => s.name);
-    navigate("/skill-gap", { state: { skills } });
-  };
-
-  // Group extracted skills by category
-  const skillsByCategory = {};
-  if (results) {
-    for (const s of results.extracted_skills) {
-      if (!skillsByCategory[s.category]) skillsByCategory[s.category] = [];
-      skillsByCategory[s.category].push(s);
+  // --- Manual skill gap handlers ---
+  const addSkill = (skill) => {
+    if (skill && !knownSkills.some((s) => s.toLowerCase() === skill.toLowerCase())) {
+      setKnownSkills((prev) => [...prev, skill]);
     }
-  }
+    setSkillInput("");
+  };
 
-  const demandChartData = results
-    ? results.extracted_skills
-        .filter((s) => s.demand > 0)
-        .sort((a, b) => b.demand - a.demand)
-        .slice(0, 15)
-        .map((s) => ({ name: s.name, demand: s.demand }))
+  const removeSkill = (skill) => {
+    setKnownSkills((prev) => prev.filter((s) => s !== skill));
+  };
+
+  const analyzeGap = () => {
+    if (knownSkills.length === 0) return;
+    setGapLoading(true);
+    setGapError(null);
+    analyzeSkillGap(knownSkills)
+      .then(setGapResults)
+      .catch((e) => setGapError(e.message))
+      .finally(() => setGapLoading(false));
+  };
+
+  const fetchSugg = async (q) => {
+    try { const d = await getSkillAutocomplete(q); return d.suggestions; }
+    catch { return []; }
+  };
+
+  // --- Derived chart data ---
+  const knownChartData = gapResults
+    ? gapResults.known_skills.map((s) => ({ name: s.skill, demand: s.demand }))
     : [];
 
-  const missingChartData = results
-    ? results.missing_skills.slice(0, 10).map((s) => ({ name: s.name, demand: s.demand }))
+  const gapMissingData = gapResults
+    ? gapResults.missing_skills.slice(0, 10).map((s) => ({ name: s.skill, demand: s.demand }))
     : [];
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Resume Analyzer</h1>
-      <p className="text-gray-500 dark:text-gray-400">
-        Upload your resume to see how your skills match market demand.
+    <div className="space-y-5">
+      <h1 className="text-2xl font-medium tracking-tight text-zinc-100">Resume & Skill Gap</h1>
+      <p className="text-xs text-zinc-500">
+        Add your skills manually or import them from a resume to analyze market demand.
       </p>
 
-      {/* Upload area */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition ${
-            dragActive
-              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950"
-              : "border-gray-300 dark:border-gray-700 hover:border-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-800"
-          }`}
-        >
+      {/* Skill input + upload */}
+      <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+        <h2 className="text-sm font-medium text-zinc-100 mb-3">Your Skills</h2>
+        <div className="flex gap-3 mb-4">
+          <div className="flex-1">
+            <AutocompleteInput
+              placeholder="Add a skill..."
+              fetchSuggestions={fetchSugg}
+              onSelect={addSkill}
+              value={skillInput}
+              onChange={setSkillInput}
+            />
+          </div>
+          <button
+            onClick={() => addSkill(skillInput)}
+            className="px-4 py-2 bg-zinc-800 text-zinc-200 text-sm font-medium rounded-md border border-white/10 hover:bg-white/5 transition"
+          >
+            Add
+          </button>
+        </div>
+
+        {knownSkills.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {knownSkills.map((s) => (
+              <SkillBadge key={s} name={s} onRemove={() => removeSkill(s)} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500 mb-4">No skills added yet.</p>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={analyzeGap}
+            disabled={gapLoading || knownSkills.length === 0}
+            className="px-4 py-2 bg-indigo-500/10 text-indigo-400 text-sm font-medium rounded-md border border-indigo-500/20 hover:bg-indigo-500/20 disabled:opacity-50 transition"
+          >
+            {gapLoading ? "Analyzing..." : "Analyze Gap"}
+          </button>
+
+          <span className="text-xs text-zinc-500">or</span>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadLoading}
+            className="px-4 py-2 bg-zinc-800 text-zinc-300 text-sm font-medium rounded-md border border-white/10 hover:bg-white/5 disabled:opacity-50 transition"
+          >
+            {uploadLoading ? "Importing..." : file ? file.name : "Import from Resume"}
+          </button>
           <input
             ref={fileInputRef}
             type="file"
             accept=".pdf,.docx"
             className="hidden"
-            onChange={(e) => handleFile(e.target.files[0])}
+            onChange={(e) => { handleFile(e.target.files[0]); }}
           />
-          <svg className="mx-auto w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
-          {file ? (
-            <p className="text-gray-700 dark:text-gray-300 font-medium">{file.name}</p>
-          ) : (
-            <>
-              <p className="text-gray-600 dark:text-gray-400 font-medium">
-                Drag and drop your resume, or click to browse
-              </p>
-              <p className="text-sm text-gray-400 mt-1">Supports PDF and DOCX</p>
-            </>
+          {file && !uploadLoading && (
+            <button
+              onClick={upload}
+              className="px-4 py-2 bg-indigo-500/10 text-indigo-400 text-sm font-medium rounded-md border border-indigo-500/20 hover:bg-indigo-500/20 transition"
+            >
+              Upload
+            </button>
           )}
         </div>
 
-        {file && (
-          <button
-            onClick={upload}
-            disabled={loading}
-            className="mt-4 px-6 py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition"
-          >
-            {loading ? "Analyzing..." : "Analyze Resume"}
-          </button>
-        )}
+        {uploadError && <div className="mt-3"><ErrorMessage message={uploadError} /></div>}
       </div>
 
-      {loading && <LoadingSpinner message="Parsing and analyzing your resume..." />}
-      {error && <ErrorMessage message={error} />}
+      {uploadLoading && <LoadingSpinner message="Parsing resume and extracting skills..." />}
+      {gapLoading && <LoadingSpinner message="Analyzing your skill gap..." />}
+      {gapError && <ErrorMessage message={gapError} onRetry={analyzeGap} />}
 
-      {results && !loading && (
+      {gapResults && !gapLoading && (
         <>
-          {/* Readiness score */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 className="text-lg font-semibold mb-3">Market Readiness Score</h2>
+          {/* Coverage meter */}
+          <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+            <h2 className="text-sm font-medium text-zinc-100 mb-3">Market Coverage</h2>
             <div className="flex items-center gap-4">
-              <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-6 overflow-hidden">
+              <div className="flex-1 bg-zinc-800 rounded-full h-4 overflow-hidden">
                 <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(results.readiness_score, 100)}%`,
-                    backgroundColor: results.readiness_score >= 60 ? "#10b981" : results.readiness_score >= 30 ? "#f59e0b" : "#ef4444",
-                  }}
+                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(gapResults.coverage_percent, 100)}%` }}
                 />
               </div>
-              <span className="text-2xl font-bold shrink-0" style={{
-                color: results.readiness_score >= 60 ? "#10b981" : results.readiness_score >= 30 ? "#f59e0b" : "#ef4444",
-              }}>
-                {results.readiness_score}%
+              <span className="text-2xl font-medium text-zinc-100 shrink-0">
+                {gapResults.coverage_percent}%
               </span>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              {results.total_extracted} skills extracted, {results.matched_in_market} matched in market data.
+            <p className="text-xs text-zinc-500 mt-2">
+              Your skills cover {gapResults.coverage_percent}% of market demand across {gapResults.total_technical_skills} tracked technical skills.
             </p>
           </div>
 
-          {/* Extracted skills by category */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-            <h2 className="text-lg font-semibold mb-4">Extracted Skills</h2>
-            {Object.keys(skillsByCategory).length > 0 ? (
-              <div className="space-y-4">
-                {Object.entries(skillsByCategory).map(([category, skills]) => (
-                  <div key={category}>
-                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                      {category.replace(/_/g, " ")}
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {skills.map((s) => (
-                        <SkillBadge key={s.name} name={s.name} category={category} />
-                      ))}
+          {/* Charts row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {knownChartData.length > 0 && (
+              <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+                <h2 className="text-sm font-medium text-zinc-100 mb-4">Your Skills Demand</h2>
+                <ResponsiveContainer width="100%" height={Math.max(200, knownChartData.length * 35)}>
+                  <BarChart data={knownChartData} layout="vertical" margin={{ left: 80 }}>
+                    <XAxis type="number" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={75} axisLine={false} tickLine={false} />
+                    <Tooltip {...DARK_TOOLTIP} />
+                    <Bar dataKey="demand" fill="#6366f1" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {gapMissingData.length > 0 && (
+              <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+                <h2 className="text-sm font-medium text-zinc-100 mb-4">Top Missing Skills</h2>
+                <ResponsiveContainer width="100%" height={Math.max(200, gapMissingData.length * 35)}>
+                  <BarChart data={gapMissingData} layout="vertical" margin={{ left: 80 }}>
+                    <XAxis type="number" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
+                    <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={75} axisLine={false} tickLine={false} />
+                    <Tooltip {...DARK_TOOLTIP} />
+                    <Bar dataKey="demand" fill="#3f3f46" radius={[0, 3, 3, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Recommendations */}
+          {gapResults.recommendations.length > 0 && (
+            <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
+              <h2 className="text-sm font-medium text-zinc-100 mb-4">Top 5 Skills to Learn Next</h2>
+              <div className="space-y-2">
+                {gapResults.recommendations.map((rec, i) => (
+                  <div key={rec.skill} className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-md border border-white/5">
+                    <span className="w-7 h-7 flex items-center justify-center rounded-md bg-indigo-500/10 text-indigo-400 text-xs font-medium border border-indigo-500/20">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-zinc-100">{rec.skill}</p>
+                      <p className="text-xs text-zinc-500">
+                        Found in {rec.demand} job listings
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <p className="text-gray-500 dark:text-gray-400">No skills extracted from resume.</p>
-            )}
-          </div>
-
-          {/* Charts row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {demandChartData.length > 0 && (
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <h2 className="text-lg font-semibold mb-4">Your Skills Demand Ranking</h2>
-                <ResponsiveContainer width="100%" height={Math.max(200, demandChartData.length * 30)}>
-                  <BarChart data={demandChartData} layout="vertical" margin={{ left: 80 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 12 }} />
-                    <YAxis dataKey="name" type="category" tick={{ fill: "#6b7280", fontSize: 12 }} width={75} />
-                    <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "none", borderRadius: 8, color: "#f9fafb" }} />
-                    <Bar dataKey="demand" fill="#10b981" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-
-            {missingChartData.length > 0 && (
-              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                <h2 className="text-lg font-semibold mb-4">Missing High-Demand Skills</h2>
-                <ResponsiveContainer width="100%" height={Math.max(200, missingChartData.length * 30)}>
-                  <BarChart data={missingChartData} layout="vertical" margin={{ left: 80 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" tick={{ fill: "#6b7280", fontSize: 12 }} />
-                    <YAxis dataKey="name" type="category" tick={{ fill: "#6b7280", fontSize: 12 }} width={75} />
-                    <Tooltip contentStyle={{ backgroundColor: "#1f2937", border: "none", borderRadius: 8, color: "#f9fafb" }} />
-                    <Bar dataKey="demand" fill="#ef4444" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex justify-center gap-4">
-            <button
-              onClick={goToSkillGap}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition"
-            >
-              Analyze Skill Gap With These Skills
-            </button>
-            <button
-              onClick={() => { clearResume(); setResults(null); setFile(null); }}
-              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-300 dark:hover:bg-gray-600 transition"
-            >
-              Clear Cached Resume
-            </button>
-          </div>
+            </div>
+          )}
         </>
       )}
     </div>

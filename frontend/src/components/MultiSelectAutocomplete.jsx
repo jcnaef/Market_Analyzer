@@ -70,16 +70,16 @@ export default function MultiSelectAutocomplete({
     <div className="space-y-2">
       {/* Chips */}
       {selected.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {selected.map((item) => (
             <span
               key={item}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
             >
               {item}
               <button
                 onClick={() => onRemove(item)}
-                className="ml-0.5 hover:text-indigo-900 dark:hover:text-indigo-100"
+                className="ml-0.5 hover:text-indigo-300"
                 aria-label={`Remove ${item}`}
               >
                 &times;
@@ -98,19 +98,19 @@ export default function MultiSelectAutocomplete({
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           autoComplete="off"
-          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+          className="w-full px-3 py-2 rounded-md border border-white/10 bg-zinc-800 text-zinc-100 text-sm placeholder:text-zinc-500 focus:border-indigo-500/50 focus:ring-0 outline-none transition"
         />
         {show && suggestions.length > 0 && (
-          <ul className="absolute z-50 top-full left-0 right-0 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-b-lg shadow-lg max-h-60 overflow-y-auto">
+          <ul className="absolute z-50 top-full left-0 right-0 bg-zinc-900 border border-white/10 rounded-b-md max-h-60 overflow-y-auto">
             {suggestions.map((s, i) => {
               const isSelected = selected.includes(s);
               return (
                 <li
                   key={s}
-                  className={`px-4 py-2 cursor-pointer text-sm flex items-center justify-between ${
+                  className={`px-3 py-2 cursor-pointer text-sm flex items-center justify-between ${
                     i === highlighted
-                      ? "bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300"
-                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      ? "bg-indigo-500/10 text-indigo-400"
+                      : "text-zinc-300 hover:bg-white/5"
                   }`}
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -120,7 +120,7 @@ export default function MultiSelectAutocomplete({
                 >
                   <span>{s}</span>
                   {isSelected && (
-                    <span className="text-indigo-500 text-xs font-medium">
+                    <span className="text-indigo-400 text-xs font-medium">
                       selected
                     </span>
                   )}

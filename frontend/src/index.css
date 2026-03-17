@@ -1,18 +1,1 @@
 @import "tailwindcss";
-
-@custom-variant dark (&:where(.dark, .dark *));
-
-/*
- * Light/Dark theme system.
- * <html class="light"> (default) or <html class="dark">.
- * Tailwind's dark: variant handles color swaps via class.
- */
-
-@layer base {
-  html {
-    @apply bg-gray-50 text-gray-900;
-  }
-  html.dark {
-    @apply bg-gray-950 text-gray-100;
-  }
-}

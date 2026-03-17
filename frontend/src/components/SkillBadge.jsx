@@ -1,16 +1,16 @@
 const categoryColors = {
-  Languages: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  Frameworks_Libs: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",
-  Tools_Infrastructure: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
-  Concepts: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
-  Soft_Skills: "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300",
+  Languages: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  Frameworks_Libs: "bg-zinc-800 text-zinc-300 border-white/5",
+  Tools_Infrastructure: "bg-zinc-800 text-zinc-300 border-white/5",
+  Concepts: "bg-zinc-800 text-zinc-300 border-white/5",
+  Soft_Skills: "bg-zinc-800 text-zinc-300 border-white/5",
 };
 
 export default function SkillBadge({ name, category, onRemove }) {
-  const colorClass = categoryColors[category] || "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+  const colorClass = categoryColors[category] || "bg-zinc-800 text-zinc-300 border-white/5";
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border ${colorClass}`}>
       {name}
       {onRemove && (
         <button onClick={onRemove} className="ml-0.5 hover:opacity-70">
