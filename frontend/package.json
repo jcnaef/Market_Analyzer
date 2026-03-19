@@ -10,7 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.3.2",
     "@tailwindcss/vite": "^4.2.0",
+    "diff-match-patch": "^1.0.5",
+    "firebase": "^12.10.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",

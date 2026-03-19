@@ -4,9 +4,11 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import pytest
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 SCHEMA_PATH = ROOT_DIR / "data" / "schema.sql"
+MIGRATIONS_DIR = ROOT_DIR / "migrations"
 
 TEST_DB_URL = "postgresql:///market_analyzer_test?host=/var/run/postgresql"
 
@@ -108,6 +110,14 @@ def db_url():
         c.execute(f.read())
     conn.commit()
 
+    # Apply migration files (002+) on top of base schema
+    for sql_file in sorted(MIGRATIONS_DIR.glob("*.sql")):
+        if sql_file.name == "001_initial_schema.sql":
+            continue  # Already loaded via schema.sql
+        with open(sql_file) as f:
+            c.execute(f.read())
+        conn.commit()
+
     _seed_database(conn)
     conn.close()
 
@@ -147,13 +157,42 @@ def mock_taxonomy():
 
 @pytest.fixture
 def test_client(db_url, monkeypatch):
-    """Patch server globals and return a FastAPI TestClient."""
+    """Patch server globals and return a FastAPI TestClient.
+
+    Reinitializes the connection pool to point at the test database so that
+    server endpoints (which call db_queries without db_url) use test data.
+    """
     from market_analyzer.skill_recommender import SkillRecommender
     from market_analyzer.location_recommender import LocationSkillRecommender
-    from market_analyzer import server
+    from market_analyzer import server, db_config
     from starlette.testclient import TestClient
+
+    # Point the pool at the test database
+    db_config.close_pool()
+    db_config.init_pool(db_url)
 
     monkeypatch.setattr(server, "skill_brain", SkillRecommender(db_url))
     monkeypatch.setattr(server, "location_brain", LocationSkillRecommender(db_url))
-    monkeypatch.setattr(server, "DB_URL", db_url)
     return TestClient(server.app)
+
+
+@pytest.fixture
+def auth_header(db_url):
+    """Return an Authorization header dict with a mocked Firebase token.
+
+    Patches firebase_admin.auth.verify_id_token to return a fake decoded token
+    and ensures the corresponding user row exists in the test database.
+    """
+    fake_decoded = {
+        "uid": "test-firebase-uid",
+        "email": "testuser@example.com",
+        "name": "Test User",
+        "picture": "https://example.com/photo.jpg",
+    }
+
+    patcher = patch("firebase_admin.auth.verify_id_token", return_value=fake_decoded)
+    patcher.start()
+
+    yield {"Authorization": "Bearer fake-test-token"}
+
+    patcher.stop()

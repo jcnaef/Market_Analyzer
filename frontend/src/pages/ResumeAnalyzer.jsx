@@ -3,8 +3,9 @@ import { useLocation } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { analyzeResume, analyzeSkillGap, getSkillAutocomplete } from "../api";
+import { analyzeResume, analyzeSkillGap, getSkillAutocomplete, getResume } from "../api";
 import { useResumeContext } from "../context/ResumeContext";
+import { useAuth } from "../context/AuthContext";
 import AutocompleteInput from "../components/AutocompleteInput";
 import SkillBadge from "../components/SkillBadge";
 import LoadingSpinner from "../components/LoadingSpinner";
@@ -19,6 +20,7 @@ const DARK_TOOLTIP = {
 export default function ResumeAnalyzer() {
   const location = useLocation();
   const { resumeResults, setResumeResults, clearResume, resumeSkills } = useResumeContext();
+  const { firebaseUser, dbUser } = useAuth();
   const fileInputRef = useRef(null);
 
   // Upload state
@@ -41,6 +43,22 @@ export default function ResumeAnalyzer() {
       setKnownSkills(resumeSkills);
     }
   }, [location.state, resumeSkills]);
+
+  // Auto-load skills from saved resume when logged in
+  const dbLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!firebaseUser || !dbUser?.has_resume) return;
+    if (dbLoadedRef.current) return;
+    dbLoadedRef.current = true;
+
+    getResume()
+      .then((resume) => {
+        if (resume?.skills?.length > 0) {
+          setKnownSkills((prev) => prev.length > 0 ? prev : resume.skills);
+        }
+      })
+      .catch(() => {});
+  }, [firebaseUser, dbUser]);
 
   // --- Upload handlers ---
   const handleFile = (f) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { getJobs, getFilterLocations, getSkillAutocomplete, getLocationAutocomplete } from "../api";
+import { useAuth } from "../context/AuthContext";
 import AutocompleteInput from "../components/AutocompleteInput";
 import SkillBadge from "../components/SkillBadge";
 import Pagination from "../components/Pagination";
@@ -28,6 +29,8 @@ function relativeDate(dateStr) {
 }
 
 export default function JobBoard() {
+  const { firebaseUser, login } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [jobs, setJobs] = useState([]);
   const [total, setTotal] = useState(0);
@@ -188,6 +191,19 @@ export default function JobBoard() {
                       Apply
                     </a>
                   )}
+                  <button
+                    onClick={() => {
+                      if (!firebaseUser) {
+                        sessionStorage.setItem("pendingTailorJobId", job.id);
+                        login();
+                      } else {
+                        navigate(`/tailor?jobId=${job.id}`);
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-md transition"
+                  >
+                    Tailor Resume
+                  </button>
                 </div>
               </div>
             </div>
