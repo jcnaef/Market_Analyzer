@@ -1,9 +1,13 @@
+# Recommends the most in-demand skills for a given location by querying
+# the jobs database and ranking skills by frequency of appearance.
+
 from psycopg2.extras import RealDictCursor
 
 from .db_config import get_db
 
 
 class LocationSkillRecommender:
+    # Initializes the recommender by loading all known locations from the database
     def __init__(self, db_url):
         self.db_url = db_url
         with get_db(db_url) as conn:

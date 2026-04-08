@@ -1,3 +1,6 @@
+# Job data collection module that fetches listings from The Muse API and
+# Google Jobs (via SerpAPI), then cleans and stores them in the database.
+
 import requests
 import json
 import os
@@ -127,6 +130,7 @@ def collect_all_states(category="Software Engineering", page_limit=3):
     print(f"✓ Collection complete: {len(all_jobs)} total jobs collected from all states")
     return all_jobs
 
+# Saves collected job data to a JSON file in the data directory
 def save_to_file(data, filename="muse_jobs.json"):
     filepath = ROOT_DIR / "data" / filename
     with open(filepath, "w") as f:

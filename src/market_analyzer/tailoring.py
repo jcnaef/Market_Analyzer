@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import re
 
 from groq import Groq
 
@@ -156,6 +157,10 @@ def tailor_bullets(
     except (json.JSONDecodeError, IndexError) as e:
         logger.warning("Failed to parse LLM response as JSON: %s — raw: %s", e, raw)
         tailored = original_bullets
+
+    # Strip any bullet prefixes the LLM may have added (e.g. "• ", "- ")
+    _bullet_prefix = re.compile(r"^\s*[•\-\*\u2022\u2023\u25E6\u2043\u2219]\s*")
+    tailored = [_bullet_prefix.sub("", b).strip() for b in tailored]
 
     # Ensure same number of bullets
     if len(tailored) != len(original_bullets):

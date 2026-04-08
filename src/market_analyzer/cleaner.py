@@ -1,3 +1,7 @@
+# Data cleaning and feature extraction pipeline for job listings.
+# Handles HTML parsing, text normalization, skill extraction, salary parsing,
+# and location extraction from raw job data.
+
 import nltk
 import json
 import ast

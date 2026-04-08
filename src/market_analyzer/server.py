@@ -1,3 +1,7 @@
+# FastAPI application server for the Market Analyzer API.
+# Defines all REST endpoints for job browsing, salary insights, skill analysis,
+# resume parsing/storage, bullet tailoring, and user authentication.
+
 import tempfile
 import os
 from contextlib import asynccontextmanager
@@ -27,6 +31,7 @@ location_brain = None
 _taxonomy = None
 
 
+# Initializes database pool, Firebase auth, recommendation engines, and skill taxonomy on startup
 @asynccontextmanager
 async def lifespan(app):
     global skill_brain, location_brain, _taxonomy
@@ -81,11 +86,13 @@ class TailorRequest(BaseModel):
 
 # --- Original endpoints ---
 
+# Returns a welcome message with basic usage info
 @app.get("/")
 def home():
     return {"message": "Go to /skill/{skill_name} to see correlations"}
 
 
+# Returns skills that most frequently co-occur with the given skill
 @app.get("/skill/{name}")
 def get_skill_matrix(name: str):
     if not skill_brain:
@@ -96,6 +103,7 @@ def get_skill_matrix(name: str):
     return {"target_skill": name, "related_skills": results}
 
 
+# Returns the most in-demand skills for a given city
 @app.get("/location/{city}")
 def get_city_stats(city: str):
     if not location_brain:
@@ -106,6 +114,7 @@ def get_city_stats(city: str):
     return results
 
 
+# Returns skill name suggestions matching a prefix query for search autocomplete
 @app.get("/skills/autocomplete")
 def skills_autocomplete(q: str = "", limit: int = 8):
     if not q:
@@ -129,6 +138,7 @@ def skills_autocomplete(q: str = "", limit: int = 8):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
+# Returns location name suggestions matching a prefix query for search autocomplete
 @app.get("/locations/autocomplete")
 def locations_autocomplete(q: str = "", limit: int = 8):
     if not q:
@@ -142,8 +152,7 @@ def locations_autocomplete(q: str = "", limit: int = 8):
         raise HTTPException(status_code=500, detail=f"Error filtering locations: {str(e)}")
 
 
-# --- New API endpoints ---
-
+# Fetches a single job listing by its database ID
 @app.get("/api/jobs/{job_id}")
 def get_job_by_id(job_id: int):
     with get_db() as conn:
@@ -158,11 +167,13 @@ def get_job_by_id(job_id: int):
     return {"id": row[0], "title": row[1], "description": row[2]}
 
 
+# Returns aggregate statistics for the dashboard (totals, top skills, trends, salary overview)
 @app.get("/api/dashboard/stats")
 def dashboard_stats():
     return db_queries.get_dashboard_stats()
 
 
+# Returns a paginated, filterable list of job listings
 @app.get("/api/jobs")
 def list_jobs(
     page: int = Query(1, ge=1),
@@ -181,6 +192,7 @@ def list_jobs(
     )
 
 
+# Returns salary statistics grouped by level, location, or skill
 @app.get("/api/salary/insights")
 def salary_insights(group_by: str = "level", names: str | None = None):
     name_list = [n.strip() for n in names.split(",") if n.strip()] if names else None
@@ -190,11 +202,13 @@ def salary_insights(group_by: str = "level", names: str | None = None):
     return result
 
 
+# Analyzes which high-demand skills the user is missing based on their known skills
 @app.post("/api/skill-gap/analyze")
 def skill_gap_analyze(request: SkillGapRequest):
     return db_queries.analyze_skill_gap(known_skills=request.known_skills)
 
 
+# Accepts a PDF/DOCX resume file and returns skill analysis against market demand
 @app.post("/api/resume/analyze")
 async def resume_analyze(file: UploadFile = File(...)):
     filename = file.filename or ""
@@ -226,6 +240,7 @@ async def resume_analyze(file: UploadFile = File(...)):
     return db_queries.analyze_resume_skills(extracted_skills=extracted)
 
 
+# Returns the authenticated user's profile information
 @app.get("/api/user/me")
 def get_me(user: dict = Depends(get_current_user)):
     return user
@@ -234,6 +249,7 @@ def get_me(user: dict = Depends(get_current_user)):
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
 
 
+# Accepts a resume file upload, extracts text, and returns structured parsed data
 @app.post("/api/user/resume/upload")
 async def upload_resume(
     file: UploadFile = File(...),
@@ -268,12 +284,18 @@ async def upload_resume(
     return parsed
 
 
+# Saves or updates the user's structured resume data in the database
 @app.put("/api/user/resume")
 def save_resume(
     resume: ResumeSchema,
     user: dict = Depends(get_current_user),
 ):
     import json
+    for entry in resume.experience:
+        print(f"[resume] {entry.company} - {entry.title}:")
+        for i, bullet in enumerate(entry.bullets, 1):
+            lines = bullet.strip().splitlines()
+            print(f"  bullet {i}: {len(lines)} line(s)")
     resume_json = json.loads(resume.model_dump_json())
 
     with get_db() as conn:
@@ -294,6 +316,7 @@ def save_resume(
     return {"status": "saved"}
 
 
+# Retrieves the authenticated user's saved resume data
 @app.get("/api/user/resume")
 def get_resume(user: dict = Depends(get_current_user)):
     with get_db() as conn:
@@ -310,6 +333,7 @@ def get_resume(user: dict = Depends(get_current_user)):
     return row[0]
 
 
+# Uses LLM to rewrite resume bullets tailored to a specific job description
 @app.post("/api/tailor-section")
 def tailor_section(
     request: TailorRequest,
@@ -355,6 +379,7 @@ def tailor_section(
     return result
 
 
+# Compares user skills against a job description and suggests missing skills to learn
 @app.post("/api/suggest-skills")
 def suggest_skills_endpoint(request: SkillSuggestRequest):
     return suggest_skills(
@@ -364,11 +389,13 @@ def suggest_skills_endpoint(request: SkillSuggestRequest):
     )
 
 
+# Returns distinct job levels for the filter dropdown in the UI
 @app.get("/api/filters/levels")
 def filter_levels():
     return {"levels": db_queries.get_filter_levels()}
 
 
+# Returns distinct locations with job counts for the filter dropdown in the UI
 @app.get("/api/filters/locations")
 def filter_locations():
     return {"locations": db_queries.get_filter_locations()}
