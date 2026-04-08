@@ -1,6 +1,10 @@
+# Diagnostic script for investigating salary outliers in the jobs database.
+# Prints full details of jobs with salaries above a given threshold.
+
 import psycopg2
 from market_analyzer.db_config import DATABASE_URL
 
+# Fetches and prints job details for listings with unusually high salary values
 def investigate_salary_outliers(threshold=800000):
     """
     Fetches and prints job descriptions for jobs with unusually high salaries.

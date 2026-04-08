@@ -1,8 +1,11 @@
+# Backfill script to find jobs with missing salary data in the database
+# and attempt to extract salary info from their descriptions using regex.
+
 import psycopg2
 import re
 from market_analyzer.db_config import DATABASE_URL
 # Import the existing parser from your collector
-from collector import _parse_google_salary 
+from collector import _parse_google_salary
 
 def extract_salary(text):
     """
@@ -22,6 +25,7 @@ def extract_salary(text):
         return f"{match.group(1)} {match.group(2)}"
     return None
 
+# Queries the database for jobs missing salary data and updates them using regex extraction
 def backfill_missing_salaries():
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()

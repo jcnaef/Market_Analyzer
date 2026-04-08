@@ -1,9 +1,13 @@
+# Recommends related skills based on co-occurrence patterns in job listings.
+# Uses conditional probability to find skills that frequently appear together.
+
 from psycopg2.extras import RealDictCursor
 
 from .db_config import get_db
 
 
 class SkillRecommender:
+    # Connects to the database and verifies the skills table is populated
     def __init__(self, db_url):
         self.db_url = db_url
         with get_db(db_url) as conn:

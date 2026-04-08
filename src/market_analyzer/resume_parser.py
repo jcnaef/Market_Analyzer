@@ -91,7 +91,7 @@ _PHONE_PATTERN = re.compile(
 _LINKEDIN_PATTERN = re.compile(r"linkedin\.com/in/[\w\-]+", re.IGNORECASE)
 
 # Bullet prefixes
-_BULLET_RE = re.compile(r"^\s*[•\-\*\u2022\u2023\u25E6\u2043\u2219]\s*")
+_BULLET_RE = re.compile(r"^\s*[•\-\*\u2022\u2023\u25E6\u2043\u2219\u00B7]\s*")
 
 # LinkedIn PDF detection
 _LINKEDIN_MARKERS = [
@@ -193,6 +193,10 @@ def _extract_bullets(lines: list[str]) -> list[str]:
 
 def _parse_experience_section(lines: list[str]) -> list[dict]:
     """Parse experience section into structured entries."""
+    import sys
+    print("DEBUG Experience section lines:", file=sys.stderr, flush=True)
+    for _i, _l in enumerate(lines):
+        print(f"  [{_i}] {repr(_l)}", file=sys.stderr, flush=True)
     entries = []
     current_entry = None
 
@@ -237,8 +241,14 @@ def _parse_experience_section(lines: list[str]) -> list[dict]:
                 if not current_entry["title"]:
                     current_entry["title"] = title or ""
             else:
-                # Treat as a bullet without a prefix
-                current_entry["bullets"].append(stripped)
+                # Continuation of the previous bullet (line wrapped in PDF)
+                cleaned = _BULLET_RE.sub("", stripped).strip()
+                if not cleaned:
+                    continue
+                if current_entry["bullets"]:
+                    current_entry["bullets"][-1] += " " + cleaned
+                else:
+                    current_entry["bullets"].append(cleaned)
         else:
             # No current entry and no date — might be a title/company line
             # before the date line. Start a tentative entry.
