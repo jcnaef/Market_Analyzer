@@ -18,7 +18,7 @@ def get_dashboard_stats(db_url: str = None) -> dict:
         c = conn.cursor(cursor_factory=RealDictCursor)
 
         # Totals
-        c.execute("SELECT COUNT(*) AS count FROM jobs")
+        c.execute("SELECT COUNT(*) AS count FROM jobs WHERE status = 'open'")
         total_jobs = c.fetchone()["count"]
         c.execute("SELECT COUNT(*) AS count FROM companies")
         total_companies = c.fetchone()["count"]
@@ -29,7 +29,7 @@ def get_dashboard_stats(db_url: str = None) -> dict:
         )
         total_skills = c.fetchone()["count"]
         c.execute(
-            "SELECT COUNT(*) AS count FROM jobs WHERE salary_min IS NOT NULL OR salary_max IS NOT NULL"
+            "SELECT COUNT(*) AS count FROM jobs WHERE (salary_min IS NOT NULL OR salary_max IS NOT NULL) AND (salary_min IS NULL OR salary_min >= 15000) AND (salary_max IS NULL OR salary_max >= 15000)"
         )
         jobs_with_salary = c.fetchone()["count"]
 
@@ -81,7 +81,8 @@ def get_dashboard_stats(db_url: str = None) -> dict:
             """SELECT AVG(salary_min) as avg_min, AVG(salary_max) as avg_max,
                       MIN(salary_min) as min_sal, MAX(salary_max) as max_sal
                FROM jobs
-               WHERE salary_min IS NOT NULL AND salary_max IS NOT NULL"""
+               WHERE salary_min IS NOT NULL AND salary_max IS NOT NULL
+                     AND salary_min >= 15000 AND salary_max >= 15000"""
         )
         salary_row = c.fetchone()
 
@@ -264,7 +265,8 @@ def get_salary_insights(
                               AVG(salary_min) as avg_min, AVG(salary_max) as avg_max,
                               COUNT(*) as job_count{stats_cols}
                        FROM jobs
-                       WHERE salary_min IS NOT NULL AND salary_max IS NOT NULL"""
+                       WHERE salary_min IS NOT NULL AND salary_max IS NOT NULL
+                             AND salary_min >= 15000 AND salary_max >= 15000"""
             params: list = []
             if names:
                 placeholders = ",".join("%s" for _ in names)
@@ -281,7 +283,8 @@ def get_salary_insights(
                        FROM jobs j
                        JOIN job_locations jl ON j.id = jl.job_id
                        JOIN locations l ON jl.location_id = l.id
-                       WHERE j.salary_min IS NOT NULL AND j.salary_max IS NOT NULL"""
+                       WHERE j.salary_min IS NOT NULL AND j.salary_max IS NOT NULL
+                             AND j.salary_min >= 15000 AND j.salary_max >= 15000"""
             params = []
             if names:
                 placeholders = ",".join("%s" for _ in names)
@@ -302,6 +305,7 @@ def get_salary_insights(
                        JOIN skills s ON js.skill_id = s.id
                        JOIN skill_categories sc ON s.category_id = sc.id
                        WHERE j.salary_min IS NOT NULL AND j.salary_max IS NOT NULL
+                             AND j.salary_min >= 15000 AND j.salary_max >= 15000
                              AND sc.name != 'Soft_Skills'"""
             params = []
             if names:

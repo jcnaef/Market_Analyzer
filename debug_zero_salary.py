@@ -22,11 +22,11 @@ cur.execute("""
     SELECT j.id, j.title, c.name AS company, j.salary_min, j.salary_max, j.job_level
     FROM jobs j
     LEFT JOIN companies c ON j.company_id = c.id
-    WHERE j.salary_min IS NOT NULL AND j.salary_min < 1000
+    WHERE j.salary_min IS NOT NULL AND j.salary_min < 15000
     ORDER BY j.salary_min
 """)
 rows = cur.fetchall()
-print(f"\nJobs with salary_min < $1,000 (likely bad data): {len(rows)}")
+print(f"\nJobs with salary_min < $15,000 (likely bad data): {len(rows)}")
 for row in rows:
     print(f"  ID={row[0]}  sal={row[3]}-{row[4]}  level={row[5]}  {row[1]} @ {row[2]}")
 
