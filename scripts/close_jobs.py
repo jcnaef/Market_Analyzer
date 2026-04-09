@@ -17,6 +17,8 @@ Cron example (daily at 3 AM):
   0 3 * * * /path/to/venv/bin/python /path/to/close_stale_jobs.py >> /path/to/stale_jobs.log 2>&1
 """
 
+print("=== close_jobs.py starting ===", flush=True)
+
 import argparse
 import os
 import re
