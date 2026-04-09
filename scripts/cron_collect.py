@@ -192,8 +192,8 @@ def run_serp(pages: int = 1, dry_run: bool = False):
 # ── Muse collection ────────────────────────────────────────────────────────
 
 def run_muse(pages: int = 1, dry_run: bool = False):
-    TOP_CITIES_BY_STATE, _, _, get_muse_jobs, save_to_file = _get_collector()
-    from market_analyzer.cleaner import process_dataset
+    TOP_CITIES_BY_STATE, _, _, get_muse_jobs, _ = _get_collector()
+    from market_analyzer.collector import save_muse_jobs_to_db
     ALL_STATES, _, _ = _get_state_groups()
 
     state = load_state()
@@ -255,17 +255,8 @@ def run_muse(pages: int = 1, dry_run: bool = False):
             time.sleep(MUSE_DELAY_BETWEEN_STATES)
 
     if not dry_run and all_jobs:
-        save_to_file(all_jobs, filename="muse_jobs.json")
-
-        print("\nProcessing jobs with NLP skill extraction...")
-        process_dataset("muse_jobs.json", skills_file="skills.json")
-
-        print("Upserting to database...")
-        from migrate_to_sqlite import DatabaseMigrator
-        migrator = DatabaseMigrator(
-            csv_path=str(ROOT_DIR / "data" / "processed_jobs.csv"),
-        )
-        migrator.migrate()
+        print("\nCleaning and upserting to database...")
+        save_muse_jobs_to_db(all_jobs)
 
     actual_calls = len(states_to_run) * pages
     state["muse_monthly_calls"] += actual_calls
