@@ -164,6 +164,7 @@ def get_google_jobs(query="software developer", location="Austin, Texas, United 
 
     for page in range(num_pages):
         search = GoogleSearch(params)
+        print(search.get_dict())
         results = search.get_dict()
         page_jobs = results.get("jobs_results", [])
         all_jobs.extend(page_jobs)

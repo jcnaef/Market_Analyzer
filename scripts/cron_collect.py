@@ -7,7 +7,7 @@ coverage within rate limits, and runs cleaning/aggregation.
 
 API Limits:
   SerpAPI:  1,000 searches/month, 200 searches/hour
-  Muse:     250 searches/month
+  Muse:     250 searches/hour
 
 Schedule (via crontab):
   # Daily at 2 AM — SerpAPI collection (25 states, rotated daily)
@@ -213,8 +213,8 @@ def run_muse(pages: int = 1, dry_run: bool = False):
     print(f"Dry run:          {dry_run}")
     print(f"{'='*60}\n")
 
-    if state["muse_monthly_calls"] + estimated_calls > 250:
-        remaining = 250 - state["muse_monthly_calls"]
+    if state["muse_monthly_calls"] + estimated_calls > 2500:
+        remaining = 2500 - state["muse_monthly_calls"]
         print(f"WARNING: Would exceed monthly limit. {remaining} calls remaining.")
         if remaining <= 0:
             print("Monthly budget exhausted. Skipping Muse collection.")
