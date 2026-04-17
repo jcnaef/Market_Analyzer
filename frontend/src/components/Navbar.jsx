@@ -30,7 +30,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-12">
           <NavLink to="/" className="text-sm font-medium text-zinc-100 shrink-0 tracking-tight">
-            Market Analyzer
+            CareerLogic
           </NavLink>
           <div className="flex items-center gap-0.5 overflow-x-auto">
             {links.map((link) => (
