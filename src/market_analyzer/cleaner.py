@@ -14,6 +14,8 @@ from bs4 import BeautifulSoup
 from nltk.tokenize import RegexpTokenizer
 from nltk.util import ngrams
 
+from .db_config import get_db
+
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Ensure NLTK data is present
@@ -22,20 +24,26 @@ try:
 except LookupError:
     nltk.download('punkt')
 
-def load_skills(filename="skills.json"):
+def load_skills(db_url=None):
     """
-    Loads skill taxonomy from a JSON file and converts lists to sets for faster O(1) lookups.
+    Loads skill taxonomy from the database and returns {category: set(skills)}.
     """
-    filepath = ROOT_DIR / "data" / filename
-    if not os.path.exists(filepath):
-        print(f"Warning: {filepath} not found. Skill extraction will be skipped.")
+    try:
+        with get_db(db_url) as conn:
+            c = conn.cursor()
+            c.execute("""
+                SELECT sc.name AS category, s.name AS skill
+                FROM skills s
+                JOIN skill_categories sc ON s.category_id = sc.id
+            """)
+            rows = c.fetchall()
+        taxonomy = {}
+        for category, skill in rows:
+            taxonomy.setdefault(category, set()).add(skill)
+        return taxonomy
+    except Exception as e:
+        print(f"Warning: Could not load skills from database: {e}")
         return {}
-
-    with open(filepath, 'r') as file:
-        data = json.load(file)
-        for category in data:
-            data[category] = set(data[category])
-        return data
 
 def load_job_data(filename):
     """
@@ -167,12 +175,12 @@ def extract_skills_from_text(text, taxonomy):
         
     return found_skills
 
-def process_dataset(data_file, skills_file="skills.json"):
+def process_dataset(data_file, db_url=None):
     """
     Main driver function.
     """
     # 1. Load Data using our new functions
-    taxonomy = load_skills(skills_file)
+    taxonomy = load_skills(db_url)
     df = load_job_data(data_file)
 
     if df.empty:

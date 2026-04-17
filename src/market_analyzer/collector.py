@@ -285,7 +285,7 @@ class _JobDBWriter:
             self.cursor.execute(f.read())
         self.conn.commit()
 
-        self.taxonomy = load_skills()
+        self.taxonomy = load_skills(db_url)
         self._company_cache = {}
         self._location_cache = {}
         self._skill_category_cache = {}
