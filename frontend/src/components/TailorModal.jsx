@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { tailorSection } from "../api";
 import SkillSuggestions from "./SkillSuggestions";
-import DiffView from "./DiffView";
 
-export default function TailorModal({ experience, jobDescription, userSkills, onApprove, onClose }) {
-  const [jobDesc, setJobDesc] = useState(jobDescription || "");
+export default function TailorModal({ experience, jobDescription, jobData, userSkills, onApprove, onClose }) {
   const [additions, setAdditions] = useState([]);
   const [additionInput, setAdditionInput] = useState("");
   const [result, setResult] = useState(null);
+  const [bulletStates, setBulletStates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -35,17 +34,28 @@ export default function TailorModal({ experience, jobDescription, userSkills, on
     try {
       const data = await tailorSection({
         original_bullets: experience.bullets,
-        job_description: jobDesc,
+        job_description: jobDescription,
         allowed_additions: additions,
         experience_company: experience.company,
         experience_title: experience.title,
       });
       setResult(data);
+      setBulletStates(
+        data.tailored.map((t, i) => ({ checked: t !== data.original[i], text: t }))
+      );
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  function toggleBullet(i) {
+    setBulletStates((prev) => prev.map((s, idx) => idx === i ? { ...s, checked: !s.checked } : s));
+  }
+
+  function editBullet(i, value) {
+    setBulletStates((prev) => prev.map((s, idx) => idx === i ? { ...s, text: value } : s));
   }
 
   return (
@@ -60,23 +70,38 @@ export default function TailorModal({ experience, jobDescription, userSkills, on
           </button>
         </div>
 
+        {jobData && (
+          <div className="bg-zinc-800/50 border border-white/10 rounded-lg p-3 space-y-2">
+            <div>
+              <p className="text-sm font-medium text-zinc-200">{jobData.title}</p>
+              <p className="text-xs text-zinc-500">{jobData.company}</p>
+            </div>
+            {(jobData.salary_min || jobData.salary_max) && (
+              <p className="text-xs text-zinc-400">
+                {jobData.salary_min && jobData.salary_max
+                  ? `$${(jobData.salary_min / 1000).toFixed(0)}k – $${(jobData.salary_max / 1000).toFixed(0)}k`
+                  : jobData.salary_min
+                    ? `From $${(jobData.salary_min / 1000).toFixed(0)}k`
+                    : `Up to $${(jobData.salary_max / 1000).toFixed(0)}k`}
+              </p>
+            )}
+            {jobData.skills?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {jobData.skills.map((s) => (
+                  <span key={s} className="px-2 py-0.5 bg-zinc-700 text-zinc-300 text-xs rounded">
+                    {s}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {!result ? (
           <>
-            {/* Job description */}
-            <div>
-              <label className="block text-xs text-zinc-400 mb-1">Job Description</label>
-              <textarea
-                value={jobDesc}
-                onChange={(e) => setJobDesc(e.target.value)}
-                rows={5}
-                className="w-full bg-zinc-800 border border-white/10 rounded-md px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500"
-                placeholder="Paste the job description here..."
-              />
-            </div>
-
             {/* Skill suggestions */}
             <SkillSuggestions
-              jobDescription={jobDesc}
+              jobDescription={jobDescription}
               userSkills={userSkills}
               onAdd={addSkill}
             />
@@ -123,7 +148,7 @@ export default function TailorModal({ experience, jobDescription, userSkills, on
 
             <button
               onClick={handleTailor}
-              disabled={loading || !jobDesc.trim()}
+              disabled={loading || !jobDescription.trim()}
               className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition"
             >
               {loading ? "Tailoring..." : "Tailor Bullets"}
@@ -147,12 +172,52 @@ export default function TailorModal({ experience, jobDescription, userSkills, on
               </div>
             )}
 
-            <DiffView original={result.original} tailored={result.tailored} />
+            <div className="space-y-3">
+              {bulletStates.map((state, i) => (
+                <div
+                  key={i}
+                  className={`rounded-md p-3 border transition ${state.checked ? "bg-zinc-800/50 border-green-500/30" : "bg-zinc-800/20 border-white/5 opacity-60"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 space-y-2">
+                      <textarea
+                        value={state.text}
+                        onChange={(e) => {
+                          editBullet(i, e.target.value);
+                          e.target.style.height = "auto";
+                          e.target.style.height = e.target.scrollHeight + "px";
+                        }}
+                        ref={(el) => {
+                          if (el) {
+                            el.style.height = "auto";
+                            el.style.height = el.scrollHeight + "px";
+                          }
+                        }}
+                        rows={1}
+                        className="w-full bg-zinc-900 border border-white/10 rounded-md px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 resize-none overflow-hidden"
+                      />
+                      {result.original[i] !== result.tailored[i] && (
+                        <p className="text-xs text-zinc-500">
+                          <span className="text-zinc-600">Original: </span>{result.original[i]}
+                        </p>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={state.checked}
+                      onChange={() => toggleBullet(i)}
+                      className="accent-green-500 cursor-pointer shrink-0 w-5 h-5"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => {
-                  onApprove(result.tailored);
+                  const final = bulletStates.map((s, i) => s.checked ? s.text : result.original[i]);
+                  onApprove(final);
                   onClose();
                 }}
                 className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition"
