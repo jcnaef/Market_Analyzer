@@ -164,6 +164,7 @@ export default function TailoringPage() {
             <TailorModal
               experience={resumeData.experience[tailorIndex]}
               jobDescription={jobDescription}
+              jobData={jobData}
               userSkills={userSkills}
               onApprove={(bullets) => handleApprove(tailorIndex, bullets)}
               onClose={() => setTailorIndex(null)}

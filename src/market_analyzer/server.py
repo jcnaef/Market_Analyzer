@@ -158,13 +158,37 @@ def get_job_by_id(job_id: int):
     with get_db() as conn:
         cur = conn.cursor()
         cur.execute(
-            "SELECT id, title, description FROM jobs WHERE id = %s",
+            """
+            SELECT j.id, j.title, j.description, c.name AS company,
+                   j.salary_min, j.salary_max
+            FROM jobs j
+            JOIN companies c ON j.company_id = c.id
+            WHERE j.id = %s
+            """,
             (job_id,),
         )
         row = cur.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return {"id": row[0], "title": row[1], "description": row[2]}
+        if not row:
+            raise HTTPException(status_code=404, detail="Job not found")
+        cur.execute(
+            """
+            SELECT s.name FROM skills s
+            JOIN job_skills js ON js.skill_id = s.id
+            WHERE js.job_id = %s
+            ORDER BY s.name
+            """,
+            (job_id,),
+        )
+        skills = [r[0] for r in cur.fetchall()]
+    return {
+        "id": row[0],
+        "title": row[1],
+        "description": row[2],
+        "company": row[3],
+        "salary_min": float(row[4]) if row[4] is not None else None,
+        "salary_max": float(row[5]) if row[5] is not None else None,
+        "skills": skills,
+    }
 
 
 # Returns aggregate statistics for the dashboard (totals, top skills, trends, salary overview)

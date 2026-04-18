@@ -8,6 +8,8 @@ data/*.csv
 data/*.db
 data/*.json
 
+CLAUDE.md
+
 # C extensions
 *.so
 
