@@ -115,20 +115,20 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Monthly Trends */}
+        {/* Avg Salary by Language */}
         <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
-          <h2 className="text-sm font-medium text-zinc-100 mb-4">Monthly Posting Trends</h2>
-          {stats.monthly_trends.length > 0 ? (
+          <h2 className="text-sm font-medium text-zinc-100 mb-4">Avg Salary by Language</h2>
+          {stats.salary_by_language.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={stats.monthly_trends}>
-                <XAxis dataKey="month" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip {...DARK_TOOLTIP} />
-                <Area type="monotone" dataKey="count" stroke="#6366f1" fill="#6366f120" />
-              </AreaChart>
+              <BarChart data={stats.salary_by_language} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+                <XAxis dataKey="language" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[150000, "auto"]} tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${Math.round(v / 1000)}K`} />
+                <Tooltip {...DARK_TOOLTIP} formatter={(value) => [`$${Math.round(value / 1000)}K`, "Avg Salary"]} />
+                <Bar dataKey="avg_salary" fill="#6366f1" radius={[3, 3, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           ) : (
-            <p className="text-zinc-500 text-center py-8">No trend data available</p>
+            <p className="text-zinc-500 text-center py-8">No salary data available</p>
           )}
         </div>
       </div>

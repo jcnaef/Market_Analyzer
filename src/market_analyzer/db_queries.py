@@ -76,6 +76,30 @@ def get_dashboard_stats(db_url: str = None) -> dict:
             for row in c.fetchall()
         ]
 
+        # Avg salary by language
+        c.execute(
+            """SELECT s.name, COUNT(*) as job_count,
+                      AVG((COALESCE(j.salary_min, 0) + COALESCE(j.salary_max, 0)) /
+                          CASE WHEN j.salary_min IS NOT NULL AND j.salary_max IS NOT NULL THEN 2
+                               WHEN j.salary_min IS NOT NULL THEN 1
+                               ELSE 1 END) as avg_salary
+               FROM job_skills js
+               JOIN skills s ON js.skill_id = s.id
+               JOIN skill_categories sc ON s.category_id = sc.id
+               JOIN jobs j ON js.job_id = j.id
+               WHERE sc.name = 'Languages'
+                 AND (j.salary_min IS NOT NULL OR j.salary_max IS NOT NULL)
+                 AND COALESCE(j.salary_min, j.salary_max) >= 15000
+               GROUP BY s.id, s.name
+               HAVING COUNT(*) >= 3
+               ORDER BY avg_salary DESC
+               LIMIT 10"""
+        )
+        salary_by_language = [
+            {"language": row["name"], "avg_salary": round(float(row["avg_salary"])), "job_count": row["job_count"]}
+            for row in c.fetchall()
+        ]
+
         # Salary overview
         c.execute(
             """SELECT AVG(salary_min) as avg_min, AVG(salary_max) as avg_max,
@@ -103,6 +127,7 @@ def get_dashboard_stats(db_url: str = None) -> dict:
             "onsite_count": onsite_count,
             "top_skills": top_skills,
             "monthly_trends": monthly_trends,
+            "salary_by_language": salary_by_language,
             "salary_overview": salary_overview,
         }
 
@@ -122,7 +147,7 @@ def get_jobs(
     with get_db(db_url) as conn:
         c = conn.cursor(cursor_factory=RealDictCursor)
 
-        where_clauses = []
+        where_clauses = ["j.status = 'open'"]
         params = []
 
         if level:
