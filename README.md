@@ -1,8 +1,8 @@
-# URL
-https://www.careerlogic.info
 # Job Market Skill Recommender
 
-A full-stack AI-powered job market analysis platform that helps software engineers discover in-demand skills, explore salary trends, identify skill gaps, and tailor resumes to job descriptions. It fetches job postings from The Muse API and provides actionable career insights.
+**Live site:** [careerlogic.info](https://www.careerlogic.info)
+
+A full-stack AI-powered job market analysis platform that helps software engineers discover in-demand skills, explore salary trends, identify skill gaps, and tailor resumes to job descriptions. It aggregates job postings from **The Muse API** and **Google Jobs (via SerpAPI)** and provides actionable career insights.
 
 ## Features
 
@@ -20,6 +20,7 @@ A full-stack AI-powered job market analysis platform that helps software enginee
 | Layer | Technologies |
 |-------|-------------|
 | **Backend** | Python 3.10+, FastAPI, PostgreSQL, pandas, NLTK, BeautifulSoup4 |
+| **Data Sources** | The Muse API, Google Jobs via SerpAPI |
 | **Frontend** | React 19, Vite, Tailwind CSS, Recharts, React Router |
 | **Auth** | Firebase Auth (Google OAuth), Firebase Admin SDK |
 | **AI/LLM** | Groq API (Llama 3) |
@@ -36,7 +37,7 @@ Market_Analyzer/
 │   ├── db_config.py            # Database connection pooling & Firebase init
 │   ├── db_queries.py           # Database query utilities
 │   ├── auth.py                 # Firebase authentication dependency
-│   ├── collector.py            # Fetches jobs from The Muse API
+│   ├── collector.py            # Fetches jobs from The Muse API and Google Jobs (SerpAPI)
 │   ├── cleaner.py              # HTML cleaning and skill extraction
 │   ├── resume_parser.py        # Rule-based resume parsing (PDF/DOCX → structured JSON)
 │   ├── text_extractor.py       # PDF and DOCX text extraction
@@ -56,8 +57,12 @@ Market_Analyzer/
 │   ├── config/                 # Firebase configuration
 │   ├── App.jsx                 # Routing
 │   └── api.js                  # API client
-├── migrations/                 # PostgreSQL migrations (4 files)
+├── migrations/                 # PostgreSQL migrations (applied automatically on startup)
 ├── scripts/                    # Data pipeline scripts
+│   ├── cron_collect.py         # Orchestrates SerpAPI + Muse collection within API budgets
+│   ├── close_jobs.py           # Marks stale postings inactive
+│   ├── run_migrations.py       # Manual migration runner
+│   └── visualize_db.py         # DB inspection utility
 ├── tests/                      # Test suite
 ├── Dockerfile                  # Container deployment
 ├── pyproject.toml              # Python dependencies
@@ -94,18 +99,27 @@ GROQ_API_KEY=your_groq_api_key
 FIREBASE_PROJECT_ID=your_project_id
 FIREBASE_CLIENT_EMAIL=your_service_account_email
 FIREBASE_PRIVATE_KEY=your_private_key
-SERP_KEY=your_serpapi_key          # optional, for data collection
+SERP_KEY=your_serpapi_key          # SerpAPI key for Google Jobs collection
 ALLOWED_ORIGINS=*                  # CORS origins
 ```
 
 ### 3. Build the Data Model
 
-Fetch raw job data and run the cleaning pipeline:
+Fetch raw job data and run the cleaning pipeline. Skill extraction and persistence happen inside `collector.py`:
 
 ```bash
-python src/market_analyzer/collector.py
-python src/market_analyzer/cleaner.py
+# One-off collection from each source
+python src/market_analyzer/collector.py            # Muse (default)
+python src/market_analyzer/collector.py google     # Google Jobs (SerpAPI)
+
+# Or use the cron orchestrator (respects per-source API budgets and rotates queries/states)
+python scripts/cron_collect.py serp                # SerpAPI daily rotation
+python scripts/cron_collect.py muse                # Muse weekly rotation
+python scripts/cron_collect.py all                 # Both sources in sequence
+python scripts/cron_collect.py status              # Show usage and rotation state
 ```
+
+SerpAPI is capped at ~1,000 searches/month — `cron_collect.py` rotates 25 states per day and stays well under the 200/hr ceiling. Muse has no monthly cap but is throttled at 250 searches/hour.
 
 ### 4. Start the Application
 
@@ -128,8 +142,12 @@ docker run -p 8000:8000 --env-file .env market-analyzer
 
 ### Running Tests
 
+Tests run against a real `market_analyzer_test` PostgreSQL database (no DB mocks). The schema is built from `data/schema.sql` and torn down between tests.
+
 ```bash
-pytest tests/
+poetry run pytest                          # All tests
+poetry run pytest tests/test_server.py     # Single file
+poetry run pytest -k "test_name"           # Single test by name
 ```
 
 ## API Endpoints
