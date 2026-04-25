@@ -1,6 +1,5 @@
 # URL
-https://jcnaef-marketanalyzer.vercel.app
-
+https://www.careerlogic.info
 # Job Market Skill Recommender
 
 A full-stack AI-powered job market analysis platform that helps software engineers discover in-demand skills, explore salary trends, identify skill gaps, and tailor resumes to job descriptions. It fetches job postings from The Muse API and provides actionable career insights.
