@@ -66,7 +66,7 @@ export default function Dashboard() {
       <h1 className="text-2xl font-medium tracking-tight text-zinc-100">Dashboard</h1>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         <StatCard title="Total Jobs" value={stats.total_jobs.toLocaleString()} />
         <StatCard title="Companies" value={stats.total_companies.toLocaleString()} />
         <StatCard title="Skills Tracked" value={stats.total_skills.toLocaleString()} />
@@ -77,10 +77,11 @@ export default function Dashboard() {
       <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
         <h2 className="text-sm font-medium text-zinc-100 mb-4">Top Technical Skills</h2>
         {skillChartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={isMobile ? 500 : 400}>
-            <BarChart data={skillChartData} layout="vertical" margin={{ left: isMobile ? 10 : 80 }}>
-              <XAxis type="number" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={isMobile ? 70 : 75} axisLine={false} tickLine={false} />
+          <>
+          <ResponsiveContainer width="100%" height={isMobile ? 320 : 400}>
+            <BarChart data={skillChartData} layout="vertical" margin={{ left: isMobile ? 4 : 80, right: isMobile ? 12 : 0 }}>
+              <XAxis type="number" tick={{ fill: "#71717a", fontSize: isMobile ? 10 : 12 }} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: isMobile ? 10 : 12 }} width={isMobile ? 80 : 75} interval={0} axisLine={false} tickLine={false} />
               <Tooltip {...DARK_TOOLTIP} />
               <Bar
                 dataKey="count"
@@ -94,6 +95,22 @@ export default function Dashboard() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+          <details className="sm:hidden mt-3 text-xs">
+            <summary className="text-zinc-400 cursor-pointer py-2 select-none">Show details</summary>
+            <ul className="mt-2 space-y-1.5">
+              {skillChartData.map((s) => (
+                <li
+                  key={s.name}
+                  onClick={() => navigate(`/jobs?skill=${encodeURIComponent(s.name)}`)}
+                  className="flex justify-between cursor-pointer py-1"
+                >
+                  <span className="text-zinc-300">{s.name}</span>
+                  <span className="text-zinc-500">{s.count}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+          </>
         ) : (
           <p className="text-zinc-500 text-center py-8">No skill data available</p>
         )}
@@ -104,13 +121,13 @@ export default function Dashboard() {
         {/* Remote vs Onsite */}
         <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
           <h2 className="text-sm font-medium text-zinc-100 mb-4">Remote vs Onsite</h2>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
             <PieChart>
               <Pie
                 data={remoteData}
                 cx="50%"
                 cy="50%"
-                outerRadius={isMobile ? 70 : 100}
+                outerRadius={isMobile ? 60 : 100}
                 dataKey="value"
                 label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                 labelLine={isMobile ? false : { stroke: "#71717a" }}
@@ -130,10 +147,10 @@ export default function Dashboard() {
         <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
           <h2 className="text-sm font-medium text-zinc-100 mb-4">Avg Salary by Language</h2>
           {stats.salary_by_language.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+            <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
               <BarChart data={stats.salary_by_language} margin={{ top: 5, right: isMobile ? 4 : 10, bottom: 5, left: isMobile ? 4 : 10 }}>
-                <XAxis dataKey="language" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
-                <YAxis domain={[150000, "auto"]} tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${Math.round(v / 1000)}K`} />
+                <XAxis dataKey="language" tick={{ fill: "#71717a", fontSize: isMobile ? 10 : 12 }} axisLine={false} tickLine={false} />
+                <YAxis domain={[150000, "auto"]} tick={{ fill: "#71717a", fontSize: isMobile ? 10 : 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${Math.round(v / 1000)}K`} />
                 <Tooltip {...DARK_TOOLTIP} formatter={(value) => [`$${Math.round(value / 1000)}K`, "Avg Salary"]} />
                 <Bar dataKey="avg_salary" fill="#6366f1" radius={[3, 3, 0, 0]} />
               </BarChart>

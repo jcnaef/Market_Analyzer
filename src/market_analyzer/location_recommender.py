@@ -47,19 +47,20 @@ class LocationSkillRecommender:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
 
             cursor.execute("""
-                SELECT s.name, COUNT(DISTINCT j.id) AS count
+                SELECT s.name, sc.name AS category, COUNT(DISTINCT j.id) AS count
                 FROM jobs j
                 JOIN job_locations jl ON j.id = jl.job_id
                 JOIN locations l ON jl.location_id = l.id
                 JOIN job_skills js ON j.id = js.job_id
                 JOIN skills s ON js.skill_id = s.id
+                JOIN skill_categories sc ON s.category_id = sc.id
                 WHERE (j.is_remote = TRUE AND %(loc)s = 'Remote')
                    OR (j.is_remote = FALSE AND l.city = %(loc)s)
-                GROUP BY s.id, s.name
+                GROUP BY s.id, s.name, sc.name
                 ORDER BY count DESC
                 LIMIT %(limit)s
             """, {"loc": target, "limit": limit})
 
-            top_skills = [{"skill": row["name"], "count": row["count"]}
+            top_skills = [{"skill": row["name"], "category": row["category"], "count": row["count"]}
                           for row in cursor.fetchall()]
             return {"location": target, "top_skills": top_skills}

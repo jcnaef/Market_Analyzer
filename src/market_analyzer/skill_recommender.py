@@ -37,6 +37,7 @@ class SkillRecommender:
 
             cursor.execute("""
                 SELECT s2.name,
+                       sc.name AS category,
                        COUNT(*)::FLOAT / (
                            SELECT COUNT(*) FROM job_skills js_inner
                            JOIN skills s_inner ON js_inner.skill_id = s_inner.id
@@ -46,12 +47,13 @@ class SkillRecommender:
                 JOIN job_skills js2 ON js1.job_id = js2.job_id
                 JOIN skills s1 ON js1.skill_id = s1.id
                 JOIN skills s2 ON js2.skill_id = s2.id
+                JOIN skill_categories sc ON s2.category_id = sc.id
                 WHERE LOWER(s1.name) = %s AND LOWER(s2.name) != %s
-                GROUP BY s2.id, s2.name
+                GROUP BY s2.id, s2.name, sc.name
                 ORDER BY score DESC
                 LIMIT %s
             """, (skill_lower, skill_lower, skill_lower, limit))
 
-            results = [{"skill": row["name"], "score": round(row["score"], 2)}
+            results = [{"skill": row["name"], "category": row["category"], "score": round(row["score"], 2)}
                        for row in cursor.fetchall()]
             return results
