@@ -6,6 +6,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import useIsMobile from "../hooks/useIsMobile";
 
 function formatSalary(val) {
   if (val == null) return "N/A";
@@ -121,6 +122,7 @@ const ROW_HEIGHT = 50;
 const MIN_CHART_HEIGHT = 250;
 
 export default function BoxPlotChart({ data }) {
+  const isMobile = useIsMobile();
   if (!data || data.length === 0) return null;
 
   // Compute X domain (salary axis) from all data points
@@ -146,13 +148,13 @@ export default function BoxPlotChart({ data }) {
         <ComposedChart
           data={chartData}
           layout="vertical"
-          margin={{ left: 20, right: 30, top: 10, bottom: 10 }}
+          margin={{ left: isMobile ? 8 : 20, right: 30, top: 10, bottom: 10 }}
         >
           <YAxis
             dataKey="name"
             type="category"
-            tick={{ fill: "#71717a", fontSize: 13 }}
-            width={140}
+            tick={{ fill: "#71717a", fontSize: isMobile ? 11 : 13 }}
+            width={isMobile ? 90 : 140}
             interval={0}
             axisLine={false}
             tickLine={false}

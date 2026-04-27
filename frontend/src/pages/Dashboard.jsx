@@ -8,6 +8,7 @@ import { getDashboardStats } from "../api";
 import StatCard from "../components/StatCard";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import useIsMobile from "../hooks/useIsMobile";
 
 const CATEGORY_COLORS = {
   Languages: "#6366f1",
@@ -29,6 +30,7 @@ function formatSalary(val) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -75,10 +77,10 @@ export default function Dashboard() {
       <div className="bg-zinc-900 rounded-md border border-white/10 p-4">
         <h2 className="text-sm font-medium text-zinc-100 mb-4">Top Technical Skills</h2>
         {skillChartData.length > 0 ? (
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={skillChartData} layout="vertical" margin={{ left: 80 }}>
+          <ResponsiveContainer width="100%" height={isMobile ? 500 : 400}>
+            <BarChart data={skillChartData} layout="vertical" margin={{ left: isMobile ? 10 : 80 }}>
               <XAxis type="number" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
-              <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={75} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={isMobile ? 70 : 75} axisLine={false} tickLine={false} />
               <Tooltip {...DARK_TOOLTIP} />
               <Bar
                 dataKey="count"
@@ -104,7 +106,16 @@ export default function Dashboard() {
           <h2 className="text-sm font-medium text-zinc-100 mb-4">Remote vs Onsite</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={remoteData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={{ stroke: "#71717a" }} stroke="rgba(255,255,255,0.1)">
+              <Pie
+                data={remoteData}
+                cx="50%"
+                cy="50%"
+                outerRadius={isMobile ? 70 : 100}
+                dataKey="value"
+                label={isMobile ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                labelLine={isMobile ? false : { stroke: "#71717a" }}
+                stroke="rgba(255,255,255,0.1)"
+              >
                 {remoteData.map((entry, i) => (
                   <Cell key={i} fill={entry.fill} />
                 ))}
@@ -120,7 +131,7 @@ export default function Dashboard() {
           <h2 className="text-sm font-medium text-zinc-100 mb-4">Avg Salary by Language</h2>
           {stats.salary_by_language.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats.salary_by_language} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
+              <BarChart data={stats.salary_by_language} margin={{ top: 5, right: isMobile ? 4 : 10, bottom: 5, left: isMobile ? 4 : 10 }}>
                 <XAxis dataKey="language" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[150000, "auto"]} tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${Math.round(v / 1000)}K`} />
                 <Tooltip {...DARK_TOOLTIP} formatter={(value) => [`$${Math.round(value / 1000)}K`, "Avg Salary"]} />

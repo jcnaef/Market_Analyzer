@@ -6,6 +6,7 @@ import { getSkillCorrelations, getLocationTrends, getSkillAutocomplete, getLocat
 import AutocompleteInput from "../components/AutocompleteInput";
 import LoadingSpinner from "../components/LoadingSpinner";
 import ErrorMessage from "../components/ErrorMessage";
+import useIsMobile from "../hooks/useIsMobile";
 
 const DARK_TOOLTIP = {
   contentStyle: { backgroundColor: "#09090b", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6 },
@@ -14,6 +15,7 @@ const DARK_TOOLTIP = {
 };
 
 export default function SkillExplorer() {
+  const isMobile = useIsMobile();
   const [skillInput, setSkillInput] = useState("");
   const [locationInput, setLocationInput] = useState("");
   const [skillResults, setSkillResults] = useState(null);
@@ -103,7 +105,7 @@ export default function SkillExplorer() {
             </h3>
             {skillChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={skillChartData} layout="vertical" margin={{ left: 80 }}>
+                <BarChart data={skillChartData} layout="vertical" margin={{ left: isMobile ? 10 : 80 }}>
                   <XAxis
                     type="number"
                     domain={[0, 100]}
@@ -112,7 +114,7 @@ export default function SkillExplorer() {
                     axisLine={false}
                     tickLine={false}
                   />
-                  <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={75} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={isMobile ? 70 : 75} axisLine={false} tickLine={false} />
                   <Tooltip
                     formatter={(v) => [`${v}%`, "Correlation"]}
                     {...DARK_TOOLTIP}
@@ -168,9 +170,9 @@ export default function SkillExplorer() {
             </p>
             {locationChartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={locationChartData} layout="vertical" margin={{ left: 80 }}>
+                <BarChart data={locationChartData} layout="vertical" margin={{ left: isMobile ? 10 : 80 }}>
                   <XAxis type="number" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={75} axisLine={false} tickLine={false} />
+                  <YAxis dataKey="name" type="category" tick={{ fill: "#71717a", fontSize: 12 }} width={isMobile ? 70 : 75} axisLine={false} tickLine={false} />
                   <Tooltip
                     formatter={(v) => [v, "Jobs"]}
                     {...DARK_TOOLTIP}
