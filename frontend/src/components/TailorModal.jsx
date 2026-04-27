@@ -213,20 +213,20 @@ export default function TailorModal({ experience, jobDescription, jobData, userS
               ))}
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => {
                   const final = bulletStates.map((s, i) => s.checked ? s.text : result.original[i]);
                   onApprove(final);
                   onClose();
                 }}
-                className="flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition"
+                className="w-full sm:flex-1 py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-medium rounded-lg transition"
               >
                 Approve Changes
               </button>
               <button
                 onClick={onClose}
-                className="flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg border border-white/10 transition"
+                className="w-full sm:flex-1 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg border border-white/10 transition"
               >
                 Reject
               </button>

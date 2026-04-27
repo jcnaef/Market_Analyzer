@@ -103,7 +103,7 @@ export default function JobBoard() {
             onChange={setSkillFilter}
           />
         </div>
-        <div className="flex items-center gap-4 mt-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mt-3">
           <label className="flex items-center gap-2 text-xs font-medium text-zinc-500 cursor-pointer">
             <input
               type="checkbox"
@@ -116,7 +116,7 @@ export default function JobBoard() {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value)}
-            className="ml-auto px-3 py-1.5 text-xs font-medium rounded-md border border-white/10 bg-zinc-800 text-zinc-300 outline-none cursor-pointer"
+            className="w-full sm:w-auto sm:ml-auto px-3 py-2 sm:py-1.5 text-xs font-medium rounded-md border border-white/10 bg-zinc-800 text-zinc-300 outline-none cursor-pointer"
           >
             <option value="date_desc">Newest first</option>
             <option value="date_asc">Oldest first</option>
@@ -186,7 +186,7 @@ export default function JobBoard() {
                       href={job.job_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-zinc-800 text-zinc-200 text-xs font-medium rounded-md border border-white/10 hover:bg-white/5 transition"
+                      className="px-3 py-2.5 sm:py-1.5 bg-zinc-800 text-zinc-200 text-xs font-medium rounded-md border border-white/10 hover:bg-white/5 transition w-full sm:w-auto text-center"
                     >
                       Apply
                     </a>
@@ -200,7 +200,7 @@ export default function JobBoard() {
                         navigate(`/tailor?jobId=${job.id}`);
                       }
                     }}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-md transition"
+                    className="px-3 py-2.5 sm:py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-md transition w-full sm:w-auto"
                   >
                     Tailor Resume
                   </button>

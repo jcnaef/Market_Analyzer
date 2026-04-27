@@ -134,8 +134,8 @@ export default function SalaryInsights() {
             </p>
           </div>
 
-          {/* Data table */}
-          <div className="bg-zinc-900 rounded-md border border-white/10 overflow-hidden">
+          {/* Data table — desktop */}
+          <div className="hidden sm:block bg-zinc-900 rounded-md border border-white/10 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
@@ -166,6 +166,40 @@ export default function SalaryInsights() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Data cards — mobile */}
+          <div className="sm:hidden space-y-3">
+            {data.map((row) => (
+              <div
+                key={row.name}
+                className="bg-zinc-900 rounded-md border border-white/10 p-4"
+              >
+                <h3 className="text-sm font-medium text-zinc-100 mb-3">{row.name}</h3>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-500">Min</dt>
+                    <dd className="text-zinc-300">{formatSalary(row.min_salary)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-500">Max</dt>
+                    <dd className="text-zinc-300">{formatSalary(row.max_salary)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-500">Mean</dt>
+                    <dd className="text-zinc-300">{formatSalary(row.avg_mid)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-zinc-500">Std Dev</dt>
+                    <dd className="text-zinc-300">{formatSalary(row.std_dev)}</dd>
+                  </div>
+                  <div className="flex justify-between col-span-2">
+                    <dt className="text-zinc-500">Jobs</dt>
+                    <dd className="text-zinc-300">{row.job_count}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))}
           </div>
         </>
       )}

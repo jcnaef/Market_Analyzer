@@ -14,6 +14,13 @@ const DARK_TOOLTIP = {
   labelStyle: { color: "#e4e4e7" },
 };
 
+const CATEGORY_COLORS = {
+  Languages: "#6366f1",
+  Frameworks_Libs: "#3f3f46",
+  Tools_Infrastructure: "#3f3f46",
+  Concepts: "#3f3f46",
+};
+
 export default function SkillExplorer() {
   const isMobile = useIsMobile();
   const [skillInput, setSkillInput] = useState("");
@@ -60,11 +67,16 @@ export default function SkillExplorer() {
     ? skillResults.related_skills.map((s) => ({
         name: s.skill,
         correlation: Math.round(s.score * 100),
+        fill: CATEGORY_COLORS[s.category] || "#3f3f46",
       }))
     : [];
 
   const locationChartData = locationResults
-    ? locationResults.top_skills.map((s) => ({ name: s.skill, count: s.count }))
+    ? locationResults.top_skills.map((s) => ({
+        name: s.skill,
+        count: s.count,
+        fill: CATEGORY_COLORS[s.category] || "#3f3f46",
+      }))
     : [];
 
   return (
@@ -90,7 +102,7 @@ export default function SkillExplorer() {
           <button
             onClick={() => searchSkill()}
             disabled={skillLoading}
-            className="px-4 py-2 bg-zinc-800 text-zinc-200 text-sm font-medium rounded-md border border-white/10 hover:bg-white/5 disabled:opacity-50 transition"
+            className="px-4 py-2.5 sm:py-2 bg-zinc-800 text-zinc-200 text-sm font-medium rounded-md border border-white/10 hover:bg-white/5 disabled:opacity-50 transition"
           >
             {skillLoading ? "Searching..." : "Search"}
           </button>
@@ -104,6 +116,7 @@ export default function SkillExplorer() {
               Skills related to "{skillResults.target_skill}"
             </h3>
             {skillChartData.length > 0 ? (
+              <>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={skillChartData} layout="vertical" margin={{ left: isMobile ? 10 : 80 }}>
                   <XAxis
@@ -119,13 +132,25 @@ export default function SkillExplorer() {
                     formatter={(v) => [`${v}%`, "Correlation"]}
                     {...DARK_TOOLTIP}
                   />
-                  <Bar dataKey="correlation" fill="#3f3f46" radius={[0, 3, 3, 0]}>
-                    {skillChartData.map((_, i) => (
-                      <Cell key={i} fill={i === 0 ? "#6366f1" : "#3f3f46"} />
+                  <Bar dataKey="correlation" radius={[0, 3, 3, 0]}>
+                    {skillChartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              <details className="sm:hidden mt-3 text-xs">
+                <summary className="text-zinc-400 cursor-pointer py-2 select-none">Show details</summary>
+                <ul className="mt-2 space-y-1.5">
+                  {skillChartData.map((s) => (
+                    <li key={s.name} className="flex justify-between py-1">
+                      <span className="text-zinc-300">{s.name}</span>
+                      <span className="text-zinc-500">{s.correlation}%</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+              </>
             ) : (
               <p className="text-zinc-500 text-sm text-center py-4">No correlated skills found.</p>
             )}
@@ -152,7 +177,7 @@ export default function SkillExplorer() {
           <button
             onClick={() => searchLocation()}
             disabled={locationLoading}
-            className="px-4 py-2 bg-zinc-800 text-zinc-200 text-sm font-medium rounded-md border border-white/10 hover:bg-white/5 disabled:opacity-50 transition"
+            className="px-4 py-2.5 sm:py-2 bg-zinc-800 text-zinc-200 text-sm font-medium rounded-md border border-white/10 hover:bg-white/5 disabled:opacity-50 transition"
           >
             {locationLoading ? "Searching..." : "Search"}
           </button>
@@ -169,6 +194,7 @@ export default function SkillExplorer() {
               Based on {locationResults.job_count} jobs analyzed
             </p>
             {locationChartData.length > 0 ? (
+              <>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={locationChartData} layout="vertical" margin={{ left: isMobile ? 10 : 80 }}>
                   <XAxis type="number" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
@@ -177,9 +203,25 @@ export default function SkillExplorer() {
                     formatter={(v) => [v, "Jobs"]}
                     {...DARK_TOOLTIP}
                   />
-                  <Bar dataKey="count" fill="#3f3f46" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="count" radius={[0, 3, 3, 0]}>
+                    {locationChartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
+              <details className="sm:hidden mt-3 text-xs">
+                <summary className="text-zinc-400 cursor-pointer py-2 select-none">Show details</summary>
+                <ul className="mt-2 space-y-1.5">
+                  {locationChartData.map((s) => (
+                    <li key={s.name} className="flex justify-between py-1">
+                      <span className="text-zinc-300">{s.name}</span>
+                      <span className="text-zinc-500">{s.count}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+              </>
             ) : (
               <p className="text-zinc-500 text-sm text-center py-4">No skill data found.</p>
             )}
