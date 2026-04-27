@@ -125,7 +125,10 @@ export default function SalaryInsights() {
             <h2 className="text-sm font-medium text-zinc-100 mb-4">
               Salary Distribution {tabs.find((t) => t.key === groupBy)?.label}
             </h2>
-            <BoxPlotChart data={data} />
+            <div className="overflow-x-auto -mx-4 px-4">
+              <BoxPlotChart data={data} />
+            </div>
+            <p className="text-xs text-zinc-500 mt-3 sm:hidden">Swipe horizontally to see all &rarr;</p>
             <p className="text-xs text-zinc-500 mt-3">
               Box = mean &plusmn; 1 std dev &middot; Line = mean &middot; Whiskers = min/max
             </p>
