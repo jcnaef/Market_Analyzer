@@ -187,20 +187,16 @@ def process_dataset(data_file, db_url=None):
         return df
 
     # 2. Clean Text
-    print("Cleaning text descriptions...")
-    df['clean_description'] = df['contents'].apply(clean_job_text)
+    df['clean_description'] = f['contents'].apply(clean_job_text)
 
     # 3. Extract Salary
-    print("Extracting salary data...")
     df['salary'] = df['clean_description'].apply(extract_salary)
 
     # 4. Extract Skills
-    print("Extracting skills...")
     df['skills_data'] = df['clean_description'].apply(
         lambda x: extract_skills_from_text(x, taxonomy)
     )
     # 5. Extract Location
-    print("Separating City and Remote status...")
 
     # Apply function to get tuples: ("New York", True)
     if 'locations' in df.columns:
@@ -224,7 +220,6 @@ def process_dataset(data_file, db_url=None):
     df.to_csv(output_path, index=False)
     print(f"✓ Saved {len(df)} processed jobs to {output_path}")
 
-    print("Processing complete.")
     return df
 
 # --- Entry Point ---
