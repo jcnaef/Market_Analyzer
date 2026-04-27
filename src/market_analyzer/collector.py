@@ -61,6 +61,7 @@ TOP_CITIES_BY_STATE = {
     "Oregon": "Portland, OR",
     "Pennsylvania": "Philadelphia, PA",
     "Rhode Island": "Providence, RI",
+    "Saint George": "Saint George, UT",
     "South Carolina": "Charleston, SC",
     "South Dakota": "Sioux Falls, SD",
     "Tennessee": "Memphis, TN",
