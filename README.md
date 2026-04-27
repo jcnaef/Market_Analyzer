@@ -1,5 +1,5 @@
 # Job Market Skill Recommender
-![Project Screenshot] (./images/career_logic.png)
+![Project Screenshot](./images/career_logic.png)
 
 **Live site:** [careerlogic.info](https://www.careerlogic.info)
 
